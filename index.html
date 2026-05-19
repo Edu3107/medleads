@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedLeads — Inteligência de Leads Médicos</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+           signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged }
+    from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+  import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs,
+           query, where, orderBy, limit, serverTimestamp, updateDoc, deleteDoc, increment }
+    from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+  // ── FIREBASE CONFIG ─────────────────────────────────────────
+  // Substitua com suas credenciais do Firebase Console
+  const firebaseConfig = {
+    apiKey:            "SUA_API_KEY",
+    authDomain:        "SEU_PROJETO.firebaseapp.com",
+    projectId:         "SEU_PROJETO",
+    storageBucket:     "SEU_PROJETO.appspot.com",
+    messagingSenderId: "SEU_SENDER_ID",
+    appId:             "SEU_APP_ID"
+  };
+
+  const app      = initializeApp(firebaseConfig);
+  const auth     = getAuth(app);
+  const db       = getFirestore(app);
+  const gProvider = new GoogleAuthProvider();
+
+  // ── ESTADO GLOBAL ────────────────────────────────────────────
+  let currentUser = null;
+  let userPlan    = 'free';
+  let userCredits = 50;
+  let filteredLeads = [];
+  let allLeads    = [];
+  let selectedIds = new Set();
+  let currentView = 'grid';
+  let currentPage = 'dashboard';
+
+  // ── DADOS DEMO (substitua por Firestore real) ────────────────
+  const DEMO_LEADS = [
+    {id:'1',nome:'Dr. André Santos',especialidade:'Cardiologia',uf:'SP',cidade:'São Paulo',crm:'123456/SP',situacao:'Ativo',genero:'M',score:88,digital:['instagram','linkedin'],bg:'linear-gradient(135deg,#3B82F6,#1D4ED8)',initials:'AS'},
+    {id:'2',nome:'Dra. Mariana Paiva',especialidade:'Ecocardiografia',uf:'PR',cidade:'Curitiba',crm:'98765/PR',situacao:'Ativo',genero:'F',score:95,digital:['instagram','youtube'],bg:'linear-gradient(135deg,#C9A84C,#8B6914)',initials:'MP'},
+    {id:'3',nome:'Dr. Rafael Lima',especialidade:'Cardiologia',uf:'RJ',cidade:'Niterói',crm:'54321/RJ',situacao:'Ativo',genero:'M',score:79,digital:['linkedin'],bg:'linear-gradient(135deg,#22C55E,#166534)',initials:'RL'},
+    {id:'4',nome:'Dra. Julia Costa',especialidade:'Cardiologia',uf:'MG',cidade:'Belo Horizonte',crm:'11111/MG',situacao:'Ativo',genero:'F',score:76,digital:['instagram'],bg:'linear-gradient(135deg,#8B5CF6,#5B21B6)',initials:'JC'},
+    {id:'5',nome:'Dr. Carlos Viana',especialidade:'Cardiologia',uf:'RJ',cidade:'Rio de Janeiro',crm:'22222/RJ',situacao:'Ativo',genero:'M',score:84,digital:['instagram','linkedin'],bg:'linear-gradient(135deg,#EF4444,#991B1B)',initials:'CV'},
+    {id:'6',nome:'Dra. Ana Ferreira',especialidade:'Ecocardiografia',uf:'SP',cidade:'Campinas',crm:'33333/SP',situacao:'Ativo',genero:'F',score:91,digital:['instagram','youtube','linkedin'],bg:'linear-gradient(135deg,#F59E0B,#92400E)',initials:'AF'},
+    {id:'7',nome:'Dr. Marcos Souza',especialidade:'Clínica Médica',uf:'BA',cidade:'Salvador',crm:'44444/BA',situacao:'Ativo',genero:'M',score:68,digital:['instagram'],bg:'linear-gradient(135deg,#06B6D4,#0E7490)',initials:'MS'},
+    {id:'8',nome:'Dra. Beatriz Lopes',especialidade:'Ecocardiografia',uf:'SP',cidade:'Ribeirão Preto',crm:'55555/SP',situacao:'Ativo',genero:'F',score:95,digital:['instagram','youtube','linkedin'],bg:'linear-gradient(135deg,#EC4899,#9D174D)',initials:'BL'},
+    {id:'9',nome:'Dr. Gustavo Pinto',especialidade:'Cardiologia',uf:'GO',cidade:'Goiânia',crm:'66666/GO',situacao:'Ativo',genero:'M',score:74,digital:['instagram'],bg:'linear-gradient(135deg,#F97316,#7C2D12)',initials:'GP'},
+    {id:'10',nome:'Dra. Camila Ramos',especialidade:'Ecocardiografia',uf:'RJ',cidade:'Rio de Janeiro',crm:'77777/RJ',situacao:'Ativo',genero:'F',score:89,digital:['instagram','youtube'],bg:'linear-gradient(135deg,#14B8A6,#0F766E)',initials:'CR'},
+    {id:'11',nome:'Dr. Felipe Cardoso',especialidade:'Cardiologia',uf:'MG',cidade:'Uberlândia',crm:'88888/MG',situacao:'Ativo',genero:'M',score:77,digital:['linkedin'],bg:'linear-gradient(135deg,#6366F1,#3730A3)',initials:'FC'},
+    {id:'12',nome:'Dra. Vanessa Silva',especialidade:'Ecocardiografia',uf:'SP',cidade:'São José dos Campos',crm:'99999/SP',situacao:'Ativo',genero:'F',score:87,digital:['instagram','linkedin'],bg:'linear-gradient(135deg,#C026D3,#701A75)',initials:'VS'},
+  ];
+
+  allLeads = filteredLeads = [...DEMO_LEADS];
+
+  // ── AUTH STATE ───────────────────────────────────────────────
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      currentUser = user;
+      await loadUserProfile(user);
+      showApp();
+    } else {
+      currentUser = null;
+      showAuth();
+    }
+  });
+
+  async function loadUserProfile(user) {
+    try {
+      const ref = doc(db, 'usuarios', user.uid);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const data = snap.data();
+        userPlan    = data.plano    || 'free';
+        userCredits = data.creditos || 50;
+      } else {
+        // Cria perfil novo
+        await setDoc(ref, {
+          nome:      user.displayName || user.email,
+          email:     user.email,
+          plano:     'free',
+          creditos:  50,
+          criadoEm:  serverTimestamp(),
+        });
+        userPlan    = 'free';
+        userCredits = 50;
+      }
+      updateUserUI();
+    } catch(e) { console.log('Profile error:', e); }
+  }
+
+  function updateUserUI() {
+    const el = document.getElementById('credits-badge');
+    if (el) el.textContent = `⚡ ${userCredits} créditos`;
+    const nameEl = document.getElementById('user-name');
+    if (nameEl && currentUser) {
+      nameEl.textContent = currentUser.displayName || currentUser.email.split('@')[0];
+    }
+  }
+
+  // ── AUTH FUNCTIONS ───────────────────────────────────────────
+  window.loginEmail = async function() {
+    const email = document.getElementById('auth-email').value;
+    const pass  = document.getElementById('auth-pass').value;
+    const btn   = document.getElementById('auth-btn');
+    btn.textContent = 'Entrando...'; btn.disabled = true;
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+    } catch(e) {
+      showAuthError(e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password'
+        ? 'E-mail ou senha incorretos' : 'Erro ao entrar. Tente novamente.');
+      btn.textContent = 'Entrar'; btn.disabled = false;
+    }
+  };
+
+  window.registerEmail = async function() {
+    const email = document.getElementById('auth-email').value;
+    const pass  = document.getElementById('auth-pass').value;
+    if (!email || !pass || pass.length < 6) {
+      showAuthError('Use um e-mail válido e senha com mínimo 6 caracteres'); return;
+    }
+    const btn = document.getElementById('auth-btn');
+    btn.textContent = 'Criando conta...'; btn.disabled = true;
+    try {
+      await createUserWithEmailAndPassword(auth, email, pass);
+    } catch(e) {
+      showAuthError(e.code === 'auth/email-already-in-use'
+        ? 'E-mail já cadastrado. Faça login.' : 'Erro ao criar conta.');
+      btn.textContent = 'Criar conta'; btn.disabled = false;
+    }
+  };
+
+  window.loginGoogle = async function() {
+    try {
+      await signInWithPopup(auth, gProvider);
+    } catch(e) { showAuthError('Erro ao entrar com Google'); }
+  };
+
+  window.logout = async function() {
+    await signOut(auth);
+  };
+
+  function showAuthError(msg) {
+    const el = document.getElementById('auth-error');
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
+  }
+
+  // ── CRM FUNCTIONS ────────────────────────────────────────────
+  window.addToCRM = async function(leadId) {
+    if (!currentUser) return;
+    const lead = allLeads.find(l => l.id === leadId);
+    if (!lead) return;
+    try {
+      await addDoc(collection(db, 'crm', currentUser.uid, 'leads'), {
+        ...lead,
+        etapa:    'prospecto',
+        notas:    '',
+        criadoEm: serverTimestamp(),
+      });
+      showToast('✓', `${lead.nome} adicionado ao CRM!`);
+    } catch(e) {
+      showToast('⚠️', 'Erro ao salvar no CRM');
+    }
+  };
+
+  window.loadCRM = async function() {
+    if (!currentUser) return [];
+    try {
+      const q = query(
+        collection(db, 'crm', currentUser.uid, 'leads'),
+        orderBy('criadoEm', 'desc')
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({id: d.id, ...d.data()}));
+    } catch(e) { return []; }
+  };
+
+  // ── EXPORT ───────────────────────────────────────────────────
+  window.exportCSV = function() {
+    const leads = selectedIds.size > 0
+      ? filteredLeads.filter(l => selectedIds.has(l.id))
+      : filteredLeads;
+
+    const header = 'Nome,Especialidade,UF,Cidade,CRM,Situação,Gênero,Score,Instagram,LinkedIn,YouTube';
+    const rows = leads.map(l =>
+      `"${l.nome}","${l.especialidade}","${l.uf}","${l.cidade}","${l.crm}","${l.situacao}",` +
+      `"${l.genero==='F'?'Feminino':'Masculino'}",${l.score},` +
+      `${l.digital.includes('instagram')?'Sim':'Não'},` +
+      `${l.digital.includes('linkedin')?'Sim':'Não'},` +
+      `${l.digital.includes('youtube')?'Sim':'Não'}`
+    );
+
+    const csv = '\uFEFF' + header + '\n' + rows.join('\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `MedLeads_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('✓', `${leads.length} leads exportados!`);
+  };
+
+  // ── FILTER ───────────────────────────────────────────────────
+  window.filterLeads = function() {
+    const q    = (document.getElementById('search-q')?.value||'').toLowerCase();
+    const esp  = document.getElementById('f-esp')?.value  || '';
+    const uf   = document.getElementById('f-uf')?.value   || '';
+    const gen  = document.getElementById('f-gen')?.value  || '';
+    const sc   = parseInt(document.getElementById('f-score')?.value||'0');
+    const dig  = document.getElementById('f-dig')?.value  || '';
+
+    filteredLeads = allLeads.filter(l => {
+      if (q && !l.nome.toLowerCase().includes(q) &&
+          !l.especialidade.toLowerCase().includes(q) &&
+          !l.cidade.toLowerCase().includes(q)) return false;
+      if (esp && l.especialidade !== esp) return false;
+      if (uf  && l.uf !== uf) return false;
+      if (gen && l.genero !== gen) return false;
+      if (l.score < sc) return false;
+      if (dig && !l.digital.includes(dig)) return false;
+      return true;
+    });
+    renderLeads();
+  };
+
+  window.clearFilters = function() {
+    ['search-q','f-esp','f-uf','f-gen','f-dig'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const sc = document.getElementById('f-score');
+    if (sc) sc.value = '0';
+    filteredLeads = [...allLeads];
+    renderLeads();
+  };
+
+  // ── RENDER LEADS ─────────────────────────────────────────────
+  function renderLeads() {
+    const grid  = document.getElementById('leads-grid');
+    const count = document.getElementById('results-count');
+    if (count) count.textContent = filteredLeads.length;
+    if (!grid) return;
+
+    grid.innerHTML = filteredLeads.map(l => `
+      <div class="lead-card ${selectedIds.has(l.id)?'selected':''}"
+           onclick="openDrawer('${l.id}')">
+        <div class="lead-top">
+          <div class="lead-av" style="background:${l.bg}">${l.initials}</div>
+          <div class="lead-info">
+            <div class="lead-name">${l.nome}</div>
+            <div class="lead-spec">${l.especialidade}</div>
+          </div>
+          <div class="lead-score" style="border-color:${l.score>=80?'var(--gold)':'var(--border2)'}">${l.score}</div>
+        </div>
+        <div class="lead-details">
+          <div class="ld">📍 ${l.cidade}, ${l.uf}</div>
+          <div class="ld">🪪 ${l.crm}</div>
+          <div class="ld">📱 ${l.digital.length?l.digital.join(', '):'—'}</div>
+        </div>
+        <div class="lead-tags">
+          ${l.score>=90?'<span class="tag gold">⭐ Top Lead</span>':''}
+          ${l.digital.includes('instagram')?'<span class="tag blue">IG</span>':''}
+          ${l.digital.includes('youtube')?'<span class="tag green">YT</span>':''}
+          ${l.digital.includes('linkedin')?'<span class="tag gray">in</span>':''}
+        </div>
+        <div class="lead-actions" onclick="event.stopPropagation()">
+          <button class="lbtn primary" onclick="addToCRM('${l.id}')">+ CRM</button>
+          <button class="lbtn ghost" onclick="toggleSelect('${l.id}',this)">
+            ${selectedIds.has(l.id)?'✓ Sel.':'Selecionar'}
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── DRAWER ───────────────────────────────────────────────────
+  window.openDrawer = function(id) {
+    const l = allLeads.find(x => x.id === id);
+    if (!l) return;
+    document.getElementById('d-av').style.background  = l.bg;
+    document.getElementById('d-av').textContent       = l.initials;
+    document.getElementById('d-name').textContent     = l.nome;
+    document.getElementById('d-spec').textContent     = l.especialidade;
+    document.getElementById('d-loc').textContent      = `${l.cidade}, ${l.uf}`;
+    document.getElementById('d-crm').textContent      = l.crm;
+    document.getElementById('d-score').textContent    = l.score;
+    document.getElementById('d-sit').textContent      = l.situacao;
+    document.getElementById('d-dig').textContent      = l.digital.join(', ') || '—';
+    document.getElementById('d-add').onclick          = () => addToCRM(id);
+    document.getElementById('drawer-ov').classList.add('open');
+    document.getElementById('drawer').classList.add('open');
+  };
+
+  window.closeDrawer = function() {
+    document.getElementById('drawer-ov').classList.remove('open');
+    document.getElementById('drawer').classList.remove('open');
+  };
+
+  // ── SELECT ───────────────────────────────────────────────────
+  window.toggleSelect = function(id, btn) {
+    if (selectedIds.has(id)) {
+      selectedIds.delete(id);
+      if (btn) btn.textContent = 'Selecionar';
+    } else {
+      selectedIds.add(id);
+      if (btn) btn.textContent = '✓ Sel.';
+    }
+    document.querySelectorAll('.lead-card').forEach(c => {
+      const cid = c.querySelector('.lbtn.primary')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+      if (cid) c.classList.toggle('selected', selectedIds.has(cid));
+    });
+  };
+
+  window.selectAll = function() {
+    filteredLeads.forEach(l => selectedIds.add(l.id));
+    renderLeads();
+    showToast('✓', `${filteredLeads.length} leads selecionados`);
+  };
+
+  // ── NAVIGATION ───────────────────────────────────────────────
+  window.goPage = function(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.sid-item').forEach(b => b.classList.remove('active'));
+    const pg = document.getElementById('page-'+page);
+    if (pg) pg.classList.add('active');
+    const btn = document.querySelector(`[data-page="${page}"]`);
+    if (btn) btn.classList.add('active');
+    currentPage = page;
+    if (page === 'busca') renderLeads();
+    if (page === 'crm')   renderCRM();
+  };
+
+  // ── CRM RENDER ───────────────────────────────────────────────
+  window.renderCRM = async function() {
+    const leads = await loadCRM();
+    const cols  = {prospecto:[], contactado:[], negociando:[], convertido:[]};
+    leads.forEach(l => {
+      if (cols[l.etapa]) cols[l.etapa].push(l);
+      else cols.prospecto.push(l);
+    });
+
+    ['prospecto','contactado','negociando','convertido'].forEach(etapa => {
+      const col = document.getElementById(`crm-${etapa}`);
+      if (!col) return;
+      col.innerHTML = cols[etapa].map(l => `
+        <div class="crm-card">
+          <div class="crm-name">${l.nome||''}</div>
+          <div class="crm-spec">${l.especialidade||''}</div>
+          <div class="crm-meta">
+            <span class="tag gold" style="font-size:9px;">${l.uf||''}</span>
+          </div>
+        </div>
+      `).join('') || '<div style="color:var(--text3);font-size:12px;text-align:center;padding:12px;">Vazio</div>';
+      // Update count
+      const cnt = document.getElementById(`cnt-${etapa}`);
+      if (cnt) cnt.textContent = cols[etapa].length;
+    });
+  };
+
+  // ── TOAST ────────────────────────────────────────────────────
+  window.showToast = function(icon, text) {
+    const t = document.getElementById('toast');
+    document.getElementById('t-icon').textContent = icon;
+    document.getElementById('t-text').textContent = text;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  };
+
+  // ── UI HELPERS ───────────────────────────────────────────────
+  function showApp()  {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display  = 'flex';
+    updateUserUI();
+    renderLeads();
+  }
+
+  function showAuth() {
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app-screen').style.display  = 'none';
+  }
+
+  window.toggleAuthMode = function() {
+    const title = document.getElementById('auth-title');
+    const btn   = document.getElementById('auth-btn');
+    const tog   = document.getElementById('auth-toggle');
+    const sub   = document.getElementById('auth-sub');
+    if (btn.textContent === 'Entrar') {
+      title.textContent = 'Criar conta';
+      btn.textContent   = 'Criar conta';
+      btn.onclick       = registerEmail;
+      tog.textContent   = 'Já tenho conta — fazer login';
+      sub.textContent   = 'Comece gratuitamente. Sem cartão.';
+    } else {
+      title.textContent = 'Entrar';
+      btn.textContent   = 'Entrar';
+      btn.onclick       = loginEmail;
+      tog.textContent   = 'Não tenho conta — criar agora';
+      sub.textContent   = 'Acesse sua conta MedLeads';
+    }
+  };
+
+  window.handleKeyAuth = function(e) {
+    if (e.key === 'Enter') {
+      const btn = document.getElementById('auth-btn');
+      if (btn) btn.click();
+    }
+  };
+
+  // Init
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('auth-btn').onclick = loginEmail;
+  });
+</script>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --gold:#C9A84C; --gold2:#E8C96A; --gold-dim:rgba(201,168,76,0.12);
+  --bg:#0A0B0F; --bg2:#0F1117; --bg3:#141720; --bg4:#1A1E2A;
+  --border:rgba(201,168,76,0.2); --border2:rgba(255,255,255,0.06);
+  --text:#E8EAF0; --text2:#9BA3B8; --text3:#6B7491;
+  --green:#22C55E; --blue:#3B82F6; --red:#EF4444;
+}
+html{scroll-behavior:smooth;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;}
+::-webkit-scrollbar{width:3px;} ::-webkit-scrollbar-thumb{background:var(--gold);}
+
+/* ── AUTH ── */
+#auth-screen{
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;background:var(--bg);
+  background-image:radial-gradient(ellipse at 30% 20%,rgba(201,168,76,0.06) 0%,transparent 60%),
+                   radial-gradient(ellipse at 70% 80%,rgba(59,130,246,0.04) 0%,transparent 60%);
+}
+.auth-card{
+  width:100%;max-width:420px;padding:48px 40px;
+  background:var(--bg3);border:1px solid var(--border);border-radius:20px;
+  box-shadow:0 40px 80px rgba(0,0,0,0.5);
+}
+.auth-logo{
+  display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:32px;
+  font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#fff;
+}
+.auth-logo-icon{
+  width:36px;height:36px;border-radius:9px;
+  background:linear-gradient(135deg,var(--gold),#8B6914);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:900;color:#000;font-family:'Cormorant Garamond',serif;
+}
+.auth-logo span{color:var(--gold);}
+#auth-title{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:4px;}
+#auth-sub{font-size:13px;color:var(--text3);margin-bottom:28px;}
+.auth-label{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:6px;}
+.auth-input{
+  width:100%;padding:13px 16px;background:var(--bg4);border:1.5px solid var(--border2);
+  border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;
+  outline:none;transition:border-color .2s;margin-bottom:14px;
+}
+.auth-input:focus{border-color:var(--gold);}
+.auth-btn{
+  width:100%;padding:14px;background:linear-gradient(135deg,var(--gold),#8B6914);
+  color:#000;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;
+  font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:4px;
+}
+.auth-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(201,168,76,0.3);}
+.auth-divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--text3);font-size:12px;}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border2);}
+.auth-google{
+  width:100%;padding:13px;background:var(--bg4);border:1.5px solid var(--border2);
+  border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;
+  font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;
+  justify-content:center;gap:8px;
+}
+.auth-google:hover{border-color:var(--border);background:var(--bg);}
+.auth-toggle{
+  text-align:center;margin-top:20px;font-size:12px;color:var(--gold);
+  cursor:pointer;background:none;border:none;width:100%;
+}
+.auth-toggle:hover{text-decoration:underline;}
+#auth-error{
+  display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);
+  border-radius:8px;padding:10px 14px;font-size:12px;color:var(--red);margin-bottom:14px;
+}
+
+/* ── APP ── */
+#app-screen{display:none;flex-direction:row;min-height:100vh;}
+
+/* TOPBAR */
+.topbar{
+  position:fixed;top:0;left:0;right:0;z-index:100;height:58px;
+  background:rgba(10,11,15,0.9);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:space-between;padding:0 28px;
+}
+.t-logo{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;}
+.t-logo-icon{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,var(--gold),#8B6914);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#000;}
+.t-logo span{color:var(--gold);}
+.t-right{display:flex;align-items:center;gap:8px;}
+.t-badge{background:var(--gold-dim);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--gold2);font-weight:600;}
+.t-user{display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);}
+.t-avatar{width:26px;height:26px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#000;}
+.t-name{font-size:12px;color:var(--text2);}
+.t-logout{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:4px 8px;border-radius:6px;}
+.t-logout:hover{color:var(--red);}
+
+/* SIDEBAR */
+.sidebar{
+  width:210px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border2);
+  padding:78px 0 24px;position:fixed;top:0;bottom:0;left:0;overflow-y:auto;z-index:50;
+}
+.sid-sec{margin-bottom:6px;}
+.sid-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:0 18px 6px;}
+.sid-item{
+  display:flex;align-items:center;gap:9px;padding:9px 18px;cursor:pointer;
+  border:none;background:none;width:100%;text-align:left;font-size:12px;
+  color:var(--text2);font-weight:500;border-left:2px solid transparent;transition:all .15s;
+  font-family:'DM Sans',sans-serif;
+}
+.sid-item:hover{background:rgba(201,168,76,0.05);color:var(--text);}
+.sid-item.active{background:var(--gold-dim);color:var(--gold2);border-left-color:var(--gold);}
+.sid-ico{font-size:14px;width:18px;text-align:center;}
+.sid-badge{margin-left:auto;background:var(--gold);color:#000;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;}
+
+/* MAIN */
+.main{margin-left:210px;padding-top:58px;flex:1;min-width:0;}
+.page{display:none;padding:28px;}
+.page.active{display:block;}
+
+/* CARDS HELPERS */
+.card{background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:20px;}
+.sec-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.sec-title{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;color:#fff;}
+
+/* DASHBOARD */
+.dash-hero{
+  background:linear-gradient(135deg,var(--bg3),var(--bg4));
+  border:1px solid var(--border);border-radius:16px;padding:32px 36px;
+  margin-bottom:24px;position:relative;overflow:hidden;
+}
+.dash-hero::after{
+  content:'MEDLEADS';position:absolute;bottom:-16px;right:20px;
+  font-family:'Cormorant Garamond',serif;font-size:100px;font-weight:700;
+  color:rgba(201,168,76,0.04);pointer-events:none;
+}
+.dash-tag{display:inline-flex;align-items:center;gap:6px;background:var(--gold-dim);border:1px solid var(--border);border-radius:20px;padding:3px 12px;font-size:10px;font-weight:600;color:var(--gold2);letter-spacing:1px;text-transform:uppercase;margin-bottom:14px;}
+.dash-tag::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--gold2);animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+.dash-h1{font-family:'Cormorant Garamond',serif;font-size:clamp(24px,3vw,38px);font-weight:700;color:#fff;margin-bottom:8px;line-height:1.1;}
+.dash-h1 span{color:var(--gold2);}
+.dash-sub{font-size:13px;color:var(--text2);max-width:480px;line-height:1.7;margin-bottom:20px;}
+.dash-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;transition:all .2s;letter-spacing:.3px;}
+.btn-gold{background:linear-gradient(135deg,var(--gold),#8B6914);color:#000;}
+.btn-gold:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(201,168,76,0.3);}
+.btn-outline{background:transparent;color:var(--text);border:1px solid var(--border);}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold2);}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.kpi{background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:18px 20px;transition:all .2s;}
+.kpi:hover{border-color:var(--border);transform:translateY(-2px);}
+.kpi-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.kpi-ico{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;}
+.kpi-trend{font-size:10px;font-weight:600;padding:2px 6px;border-radius:8px;}
+.kpi-trend.up{background:rgba(34,197,94,0.12);color:var(--green);}
+.kpi-trend.dn{background:rgba(239,68,68,0.1);color:var(--red);}
+.kpi-val{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:700;color:#fff;line-height:1;}
+.kpi-lbl{font-size:10px;color:var(--text3);margin-top:4px;}
+
+/* ACTIVITY */
+.act-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.act-list{display:flex;flex-direction:column;gap:10px;margin-top:14px;}
+.act-item{display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg4);border-radius:8px;}
+.act-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.act-name{font-size:12px;font-weight:600;color:var(--text);}
+.act-spec{font-size:10px;color:var(--text3);}
+.act-badge{padding:2px 7px;border-radius:8px;font-size:9px;font-weight:700;margin-left:auto;}
+.ab-new{background:rgba(34,197,94,0.12);color:var(--green);}
+.ab-hot{background:var(--gold-dim);color:var(--gold2);}
+
+/* SPEC BARS */
+.spec-list{display:flex;flex-direction:column;gap:8px;margin-top:14px;}
+.spec-row{display:flex;align-items:center;gap:8px;}
+.spec-nm{font-size:11px;color:var(--text2);width:110px;flex-shrink:0;}
+.spec-bar-w{flex:1;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;}
+.spec-bar{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--gold),var(--gold2));transition:width 1s ease;}
+.spec-ct{font-size:11px;color:var(--gold2);font-weight:600;width:46px;text-align:right;}
+
+/* BUSCA */
+.search-hero{background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:20px;}
+.search-bar{display:flex;gap:8px;align-items:center;background:var(--bg4);border:1.5px solid var(--border);border-radius:10px;padding:3px 3px 3px 14px;margin-bottom:18px;transition:border-color .2s;}
+.search-bar:focus-within{border-color:var(--gold);}
+.search-bar input{flex:1;background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);padding:8px 0;}
+.search-bar input::placeholder{color:var(--text3);}
+.search-bar button{background:linear-gradient(135deg,var(--gold),#8B6914);color:#000;border:none;border-radius:7px;padding:9px 18px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
+.filters{display:flex;gap:8px;flex-wrap:wrap;}
+.fg{display:flex;flex-direction:column;gap:4px;flex:1;min-width:130px;}
+.fg label{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);}
+.fg select,.fg input{background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:8px 10px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text);outline:none;transition:border-color .2s;appearance:none;}
+.fg select:focus,.fg input:focus{border-color:var(--border);}
+.f-actions{display:flex;align-items:flex-end;gap:6px;}
+.fbtn{padding:8px 16px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;transition:all .15s;}
+.fbtn.primary{background:var(--gold);color:#000;}
+.fbtn.secondary{background:var(--bg4);color:var(--text2);border:1px solid var(--border2);}
+
+/* RESULTS TOOLBAR */
+.rtb{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.rtb-count{font-size:12px;color:var(--text2);}
+.rtb-count strong{color:var(--gold2);}
+.rtb-actions{display:flex;gap:6px;}
+
+/* LEADS GRID */
+.leads-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
+.lead-card{background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:18px;transition:all .2s;cursor:pointer;}
+.lead-card:hover{border-color:var(--border);transform:translateY(-3px);box-shadow:0 10px 28px rgba(0,0,0,0.3);}
+.lead-card.selected{border-color:var(--gold);background:rgba(201,168,76,0.05);}
+.lead-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;}
+.lead-av{width:42px;height:42px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:700;flex-shrink:0;color:#fff;}
+.lead-info{flex:1;}
+.lead-name{font-size:13px;font-weight:700;color:#fff;margin-bottom:2px;}
+.lead-spec{font-size:10px;color:var(--gold2);font-weight:500;}
+.lead-score{width:34px;height:34px;border-radius:50%;border:1.5px solid;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--gold2);flex-shrink:0;}
+.lead-details{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+.ld{font-size:10px;color:var(--text3);}
+.lead-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;}
+.tag{padding:2px 7px;border-radius:8px;font-size:9px;font-weight:600;}
+.tag.gold{background:var(--gold-dim);color:var(--gold2);}
+.tag.blue{background:rgba(59,130,246,0.12);color:var(--blue);}
+.tag.green{background:rgba(34,197,94,0.12);color:var(--green);}
+.tag.gray{background:var(--bg4);color:var(--text3);}
+.lead-actions{display:flex;gap:7px;}
+.lbtn{flex:1;padding:7px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:600;transition:all .15s;}
+.lbtn.primary{background:var(--gold);color:#000;}
+.lbtn.primary:hover{background:var(--gold2);}
+.lbtn.ghost{background:var(--bg4);color:var(--text2);border:1px solid var(--border2);}
+
+/* CRM */
+.crm-cols{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.crm-col{background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:14px;}
+.crm-col-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.crm-col-title{font-size:11px;font-weight:700;color:var(--text);}
+.crm-col-cnt{width:18px;height:18px;border-radius:50%;background:var(--gold-dim);color:var(--gold2);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.crm-card{background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:11px;margin-bottom:8px;cursor:pointer;transition:all .15s;}
+.crm-card:hover{border-color:var(--border);}
+.crm-name{font-size:11px;font-weight:700;color:#fff;margin-bottom:2px;}
+.crm-spec{font-size:10px;color:var(--gold2);}
+.crm-meta{margin-top:8px;}
+
+/* PLANS */
+.plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:20px;}
+.plan-card{background:var(--bg3);border:1px solid var(--border2);border-radius:14px;padding:26px;position:relative;transition:all .2s;}
+.plan-card.feat{border-color:var(--gold);}
+.plan-badge{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--gold),#8B6914);color:#000;padding:2px 12px;border-radius:8px;font-size:9px;font-weight:800;white-space:nowrap;}
+.plan-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;color:#fff;margin-bottom:4px;}
+.plan-price{font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:700;color:var(--gold2);line-height:1;}
+.plan-price span{font-size:14px;color:var(--text3);font-family:'DM Sans',sans-serif;font-weight:400;}
+.plan-period{font-size:10px;color:var(--text3);margin-bottom:18px;}
+.plan-features{list-style:none;margin-bottom:20px;}
+.plan-feature{display:flex;align-items:flex-start;gap:6px;font-size:11px;color:var(--text2);margin-bottom:8px;}
+.plan-feature::before{content:'✦';color:var(--gold);font-size:9px;flex-shrink:0;margin-top:2px;}
+.plan-feature.off{color:var(--text3);}
+.plan-feature.off::before{color:var(--text3);}
+.plan-btn{width:100%;padding:12px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;transition:all .2s;}
+.plan-btn.gold{background:linear-gradient(135deg,var(--gold),#8B6914);color:#000;}
+.plan-btn.gold:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(201,168,76,0.3);}
+.plan-btn.outline{background:transparent;color:var(--text);border:1px solid var(--border);}
+.plan-btn.outline:hover{border-color:var(--gold);color:var(--gold2);}
+
+/* DRAWER */
+.drawer-ov{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.5);}
+.drawer-ov.open{display:block;}
+.drawer{position:fixed;right:0;top:58px;bottom:0;width:380px;background:var(--bg2);border-left:1px solid var(--border);z-index:201;transform:translateX(100%);transition:transform .3s;overflow-y:auto;}
+.drawer.open{transform:translateX(0);}
+.d-hdr{padding:22px;border-bottom:1px solid var(--border2);display:flex;justify-content:space-between;align-items:flex-start;}
+.d-av{width:58px;height:58px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:#fff;margin-bottom:12px;}
+.d-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;color:#fff;}
+.d-spec{font-size:12px;color:var(--gold2);margin-top:2px;}
+.d-close{background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;}
+.d-body{padding:22px;}
+.d-sec{margin-bottom:20px;}
+.d-sec-title{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
+.d-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);margin-bottom:7px;}
+.score-box{display:flex;align-items:center;gap:14px;background:var(--bg4);border-radius:10px;padding:14px;}
+.score-circle{width:54px;height:54px;border-radius:50%;border:2.5px solid var(--gold);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;color:var(--gold2);flex-shrink:0;}
+.d-actions{display:flex;flex-direction:column;gap:8px;}
+.d-btn{width:100%;padding:11px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;transition:all .2s;}
+.d-btn.gold{background:linear-gradient(135deg,var(--gold),#8B6914);color:#000;}
+.d-btn.green{background:rgba(34,197,94,0.12);color:var(--green);border:1px solid rgba(34,197,94,0.2);}
+.d-btn.outline{background:transparent;color:var(--text);border:1px solid var(--border);}
+
+/* TOAST */
+.toast{position:fixed;bottom:22px;right:22px;z-index:999;background:var(--bg3);border:1px solid var(--gold);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:8px;transform:translateY(80px);opacity:0;transition:all .3s;box-shadow:0 10px 30px rgba(0,0,0,0.4);}
+.toast.show{transform:translateY(0);opacity:1;}
+.t-icon{font-size:16px;}
+.t-text{font-size:12px;color:var(--text);font-weight:500;}
+
+/* RESPONSIVE */
+@media(max-width:900px){.kpi-grid{grid-template-columns:1fr 1fr;}.act-grid{grid-template-columns:1fr;}.crm-cols{grid-template-columns:1fr 1fr;}.plans-grid{grid-template-columns:1fr;}}
+@media(max-width:600px){.sidebar{display:none;}.main{margin-left:0;}.kpi-grid{grid-template-columns:1fr 1fr;}.leads-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- ══ AUTH ══════════════════════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">M</div>
+      Med<span>Leads</span>
+    </div>
+    <h2 id="auth-title">Entrar</h2>
+    <p id="auth-sub">Acesse sua conta MedLeads</p>
+    <div id="auth-error"></div>
+    <label class="auth-label">E-mail</label>
+    <input id="auth-email" type="email" class="auth-input" placeholder="seu@email.com" onkeydown="handleKeyAuth(event)">
+    <label class="auth-label">Senha</label>
+    <input id="auth-pass" type="password" class="auth-input" placeholder="••••••••" onkeydown="handleKeyAuth(event)">
+    <button id="auth-btn" class="auth-btn">Entrar</button>
+    <div class="auth-divider">ou</div>
+    <button class="auth-google" onclick="loginGoogle()">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Continuar com Google
+    </button>
+    <button class="auth-toggle" id="auth-toggle" onclick="toggleAuthMode()">Não tenho conta — criar agora</button>
+  </div>
+</div>
+
+<!-- ══ APP ════════════════════════════════════════════════════ -->
+<div id="app-screen">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="t-logo">
+      <div class="t-logo-icon">M</div>
+      Med<span>Leads</span>
+    </div>
+    <div class="t-right">
+      <div class="t-badge" id="credits-badge">⚡ 50 créditos</div>
+      <div class="t-user">
+        <div class="t-avatar">U</div>
+        <span class="t-name" id="user-name">Usuário</span>
+        <button class="t-logout" onclick="logout()" title="Sair">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sid-sec">
+      <div class="sid-label">Principal</div>
+      <button class="sid-item active" data-page="dashboard" onclick="goPage('dashboard')">
+        <span class="sid-ico">◉</span> Dashboard
+      </button>
+      <button class="sid-item" data-page="busca" onclick="goPage('busca')">
+        <span class="sid-ico">⌕</span> Buscar Médicos
+        <span class="sid-badge">NOVO</span>
+      </button>
+      <button class="sid-item" data-page="crm" onclick="goPage('crm')">
+        <span class="sid-ico">⊞</span> CRM de Leads
+      </button>
+    </div>
+    <div class="sid-sec">
+      <div class="sid-label">Produto</div>
+      <button class="sid-item" data-page="plans" onclick="goPage('plans')">
+        <span class="sid-ico">◈</span> Planos
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="dash-hero">
+        <div class="dash-tag">Plataforma ativa</div>
+        <h1 class="dash-h1">Bem-vindo ao <span>MedLeads</span></h1>
+        <p class="dash-sub">Inteligência de leads para o mercado médico brasileiro. Encontre, qualifique e converta médicos com precisão.</p>
+        <div class="dash-actions">
+          <button class="btn btn-gold" onclick="goPage('busca')">⌕ Buscar Médicos</button>
+          <button class="btn btn-outline" onclick="goPage('crm')">⊞ Ver CRM</button>
+        </div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-top"><div class="kpi-ico" style="background:rgba(201,168,76,0.12);">👨‍⚕️</div><span class="kpi-trend up">+12%</span></div>
+          <div class="kpi-val">524.832</div><div class="kpi-lbl">Médicos na base</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top"><div class="kpi-ico" style="background:rgba(34,197,94,0.1);">✓</div><span class="kpi-trend up">+8%</span></div>
+          <div class="kpi-val">1.247</div><div class="kpi-lbl">Leads qualificados</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top"><div class="kpi-ico" style="background:rgba(59,130,246,0.1);">→</div><span class="kpi-trend up">+23%</span></div>
+          <div class="kpi-val">89</div><div class="kpi-lbl">Convertidos este mês</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-top"><div class="kpi-ico" style="background:var(--gold-dim);">⚡</div><span class="kpi-trend dn">-3%</span></div>
+          <div class="kpi-val" id="kpi-credits">50</div><div class="kpi-lbl">Créditos disponíveis</div>
+        </div>
+      </div>
+
+      <div class="act-grid">
+        <div class="card">
+          <div class="sec-hdr"><div class="sec-title">Atividade Recente</div></div>
+          <div class="act-list">
+            <div class="act-item"><div class="act-av" style="background:linear-gradient(135deg,#3B82F6,#1D4ED8)">AS</div><div><div class="act-name">Dr. André Santos</div><div class="act-spec">Cardiologista · SP</div></div><span class="act-badge ab-new">Novo</span></div>
+            <div class="act-item"><div class="act-av" style="background:linear-gradient(135deg,#C9A84C,#8B6914)">MP</div><div><div class="act-name">Dra. Mariana Paiva</div><div class="act-spec">Ecocardiografista · PR</div></div><span class="act-badge ab-hot">🔥</span></div>
+            <div class="act-item"><div class="act-av" style="background:linear-gradient(135deg,#22C55E,#166534)">RL</div><div><div class="act-name">Dr. Rafael Lima</div><div class="act-spec">Cardiologista · RJ</div></div><span class="act-badge ab-new">Novo</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="sec-hdr"><div class="sec-title">Top Especialidades</div></div>
+          <div class="spec-list">
+            <div class="spec-row"><span class="spec-nm">Cardiologia</span><div class="spec-bar-w"><div class="spec-bar" style="width:82%"></div></div><span class="spec-ct">43.2k</span></div>
+            <div class="spec-row"><span class="spec-nm">Clínica Médica</span><div class="spec-bar-w"><div class="spec-bar" style="width:74%"></div></div><span class="spec-ct">38.7k</span></div>
+            <div class="spec-row"><span class="spec-nm">Pediatria</span><div class="spec-bar-w"><div class="spec-bar" style="width:68%"></div></div><span class="spec-ct">35.1k</span></div>
+            <div class="spec-row"><span class="spec-nm">Ecocardiografia</span><div class="spec-bar-w"><div class="spec-bar" style="width:38%"></div></div><span class="spec-ct">12.8k</span></div>
+            <div class="spec-row"><span class="spec-nm">Neurologia</span><div class="spec-bar-w"><div class="spec-bar" style="width:32%"></div></div><span class="spec-ct">10.9k</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BUSCA -->
+    <div class="page" id="page-busca">
+      <div class="search-hero">
+        <h2 class="sec-title" style="margin-bottom:6px;">Buscar Médicos</h2>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:20px;">Encontre profissionais com filtros precisos</p>
+        <div class="search-bar">
+          <span style="color:var(--text3);font-size:16px;">⌕</span>
+          <input id="search-q" type="text" placeholder="Nome, especialidade, cidade..." oninput="filterLeads()">
+          <button onclick="filterLeads()">Buscar</button>
+        </div>
+        <div class="filters">
+          <div class="fg">
+            <label>Especialidade</label>
+            <select id="f-esp" onchange="filterLeads()">
+              <option value="">Todas</option>
+              <option>Cardiologia</option>
+              <option>Ecocardiografia</option>
+              <option>Clínica Médica</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Estado</label>
+            <select id="f-uf" onchange="filterLeads()">
+              <option value="">Todos</option>
+              <option>SP</option><option>RJ</option><option>MG</option>
+              <option>RS</option><option>PR</option><option>BA</option>
+              <option>SC</option><option>DF</option><option>GO</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Gênero</label>
+            <select id="f-gen" onchange="filterLeads()">
+              <option value="">Todos</option>
+              <option value="M">Masculino</option>
+              <option value="F">Feminino</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Score mínimo</label>
+            <select id="f-score" onchange="filterLeads()">
+              <option value="0">Qualquer</option>
+              <option value="70">70+</option>
+              <option value="80">80+</option>
+              <option value="90">90+</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Digital</label>
+            <select id="f-dig" onchange="filterLeads()">
+              <option value="">Qualquer</option>
+              <option value="instagram">Instagram</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="youtube">YouTube</option>
+            </select>
+          </div>
+          <div class="f-actions">
+            <button class="fbtn primary" onclick="filterLeads()">Filtrar</button>
+            <button class="fbtn secondary" onclick="clearFilters()">Limpar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="rtb">
+        <div class="rtb-count"><strong id="results-count">12</strong> médicos encontrados</div>
+        <div class="rtb-actions">
+          <button class="btn btn-outline" style="padding:7px 13px;font-size:11px;" onclick="selectAll()">☑ Selecionar todos</button>
+          <button class="btn btn-gold" style="padding:7px 13px;font-size:11px;" onclick="exportCSV()">↓ Exportar CSV</button>
+        </div>
+      </div>
+
+      <div class="leads-grid" id="leads-grid"></div>
+    </div>
+
+    <!-- CRM -->
+    <div class="page" id="page-crm">
+      <div class="sec-hdr" style="margin-bottom:18px;">
+        <div><h2 class="sec-title" style="font-size:22px;">Pipeline de Leads</h2><p style="font-size:11px;color:var(--text3);margin-top:3px;">Gerencie sua prospecção em tempo real</p></div>
+        <button class="btn btn-gold">+ Novo Lead</button>
+      </div>
+      <div class="crm-cols">
+        <div class="crm-col">
+          <div class="crm-col-hdr"><span class="crm-col-title">🎯 Prospectos</span><span class="crm-col-cnt" id="cnt-prospecto">0</span></div>
+          <div id="crm-prospecto"></div>
+        </div>
+        <div class="crm-col">
+          <div class="crm-col-hdr"><span class="crm-col-title">📧 Contactados</span><span class="crm-col-cnt" id="cnt-contactado">0</span></div>
+          <div id="crm-contactado"></div>
+        </div>
+        <div class="crm-col">
+          <div class="crm-col-hdr"><span class="crm-col-title">🤝 Negociando</span><span class="crm-col-cnt" id="cnt-negociando">0</span></div>
+          <div id="crm-negociando"></div>
+        </div>
+        <div class="crm-col">
+          <div class="crm-col-hdr"><span class="crm-col-title">✅ Convertidos</span><span class="crm-col-cnt" id="cnt-convertido">0</span></div>
+          <div id="crm-convertido"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLANS -->
+    <div class="page" id="page-plans">
+      <div style="text-align:center;margin-bottom:8px;">
+        <span style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);">Planos & Preços</span>
+        <h2 style="font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:700;color:#fff;margin:10px 0 6px;">Escolha seu plano</h2>
+        <p style="font-size:12px;color:var(--text2);">Comece gratuitamente. Escale conforme crescer.</p>
+      </div>
+      <div class="plans-grid">
+        <div class="plan-card">
+          <div class="plan-name">Free</div>
+          <div class="plan-price">R$ 0<span>/mês</span></div>
+          <div class="plan-period">Para sempre gratuito</div>
+          <ul class="plan-features">
+            <li class="plan-feature">50 buscas por mês</li>
+            <li class="plan-feature">Filtros básicos</li>
+            <li class="plan-feature">Export 25 leads/mês</li>
+            <li class="plan-feature off">CRM Pipeline</li>
+            <li class="plan-feature off">Analytics avançado</li>
+          </ul>
+          <button class="plan-btn outline">Plano atual</button>
+        </div>
+        <div class="plan-card feat">
+          <div class="plan-badge">✦ MAIS POPULAR</div>
+          <div class="plan-name">Pro</div>
+          <div class="plan-price">R$ 197<span>/mês</span></div>
+          <div class="plan-period">Cancele quando quiser</div>
+          <ul class="plan-features">
+            <li class="plan-feature">500 buscas por mês</li>
+            <li class="plan-feature">Todos os filtros</li>
+            <li class="plan-feature">Export ilimitado CSV</li>
+            <li class="plan-feature">CRM Pipeline completo</li>
+            <li class="plan-feature">Suporte por WhatsApp</li>
+          </ul>
+          <button class="plan-btn gold" onclick="showToast('⚡','Em breve! Entraremos em contato.')">Assinar Pro</button>
+        </div>
+        <div class="plan-card">
+          <div class="plan-name">Business</div>
+          <div class="plan-price">R$ 497<span>/mês</span></div>
+          <div class="plan-period">Cancele quando quiser</div>
+          <ul class="plan-features">
+            <li class="plan-feature">Buscas ilimitadas</li>
+            <li class="plan-feature">Export ilimitado</li>
+            <li class="plan-feature">CRM + Analytics</li>
+            <li class="plan-feature">Relatórios PDF</li>
+            <li class="plan-feature">API de integração</li>
+          </ul>
+          <button class="plan-btn outline" onclick="showToast('⚡','Em breve! Entraremos em contato.')">Assinar Business</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- DRAWER -->
+<div class="drawer-ov" id="drawer-ov" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="d-hdr">
+    <div>
+      <div class="d-av" id="d-av">XX</div>
+      <div class="d-name" id="d-name">Nome</div>
+      <div class="d-spec" id="d-spec">Especialidade</div>
+    </div>
+    <button class="d-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="d-body">
+    <div class="d-sec">
+      <div class="d-sec-title">Score de Qualificação</div>
+      <div class="score-box">
+        <div class="score-circle" id="d-score">—</div>
+        <div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.6;">
+            Score calculado com base em especialidade, localização e presença digital.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="d-sec">
+      <div class="d-sec-title">Informações</div>
+      <div class="d-row">📍 <span id="d-loc">—</span></div>
+      <div class="d-row">🪪 <span id="d-crm">—</span></div>
+      <div class="d-row">📊 <span id="d-sit">—</span></div>
+      <div class="d-row">📱 <span id="d-dig">—</span></div>
+    </div>
+    <div class="d-sec">
+      <div class="d-sec-title">Ações</div>
+      <div class="d-actions">
+        <button class="d-btn gold" id="d-add">Adicionar ao CRM</button>
+        <button class="d-btn green" onclick="showToast('💬','Template copiado!')">Copiar mensagem WhatsApp</button>
+        <button class="d-btn outline" onclick="exportCSV()">Exportar perfil CSV</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span class="t-icon" id="t-icon">✓</span>
+  <span class="t-text" id="t-text">Ação realizada!</span>
+</div>
+
+</body>
+</html>

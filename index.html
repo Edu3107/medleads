@@ -264,5 +264,117 @@
     i.addEventListener('blur',()=>i.parentElement.style.transform='');
   });
 </script>
+
+<!-- FIREBASE AUTH -->
+<script type="module">
+  import { initializeApp }   from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+  import { getAnalytics }    from "https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics.js";
+  import {
+    getAuth,
+    signInWithEmailAndPassword,
+    GoogleAuthProvider,
+    signInWithPopup,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey:            "AIzaSyDrgyPcmwHmXskuQly8sKZvNhM-F0MdDto",
+    authDomain:        "medleads-ad333.firebaseapp.com",
+    projectId:         "medleads-ad333",
+    storageBucket:     "medleads-ad333.firebasestorage.app",
+    messagingSenderId: "887923599047",
+    appId:             "1:887923599047:web:1ede806aeee1cee5b580e2",
+    measurementId:     "G-QPYD9P24L1"
+  };
+
+  const app      = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+  const auth     = getAuth(app);
+  const provider = new GoogleAuthProvider();
+
+  // Se ja logado, redireciona
+  onAuthStateChanged(auth, user => {
+    if (user) window.location.href = '/dashboard.html';
+  });
+
+  // Helpers
+  function setLoading(btn, on) {
+    btn.disabled      = on;
+    btn.style.opacity = on ? '.6' : '1';
+    btn.style.cursor  = on ? 'wait' : 'pointer';
+  }
+
+  function showError(msg) {
+    let el = document.getElementById('auth-error');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'auth-error';
+      el.style.cssText = [
+        'margin-bottom:.9rem','padding:.7rem 1rem',
+        'border-radius:7px','font-size:.78rem','font-weight:400',
+        'background:rgba(220,60,60,.12)','border:1px solid rgba(220,60,60,.3)',
+        'color:#f87171','text-align:center','animation:fadeUp .3s ease'
+      ].join(';');
+      const card = document.querySelector('.login-card');
+      const btnLogin = document.querySelector('.btn-login');
+      card.insertBefore(el, btnLogin);
+    }
+    el.textContent  = msg;
+    el.style.display = 'block';
+  }
+
+  function hideError() {
+    const el = document.getElementById('auth-error');
+    if (el) el.style.display = 'none';
+  }
+
+  function friendlyError(code) {
+    const map = {
+      'auth/invalid-email':          'E-mail invalido.',
+      'auth/user-not-found':         'Usuario nao encontrado.',
+      'auth/wrong-password':         'Senha incorreta.',
+      'auth/invalid-credential':     'E-mail ou senha incorretos.',
+      'auth/too-many-requests':      'Muitas tentativas. Aguarde um momento.',
+      'auth/user-disabled':          'Esta conta foi desativada.',
+      'auth/popup-closed-by-user':   'Login cancelado.',
+      'auth/network-request-failed': 'Erro de conexao. Verifique sua internet.',
+    };
+    return map[code] || 'Erro ao entrar. Tente novamente.';
+  }
+
+  // Login Email/Senha
+  document.querySelector('.btn-login').addEventListener('click', async () => {
+    hideError();
+    const email = document.getElementById('email').value.trim();
+    const senha = document.getElementById('senha').value;
+    if (!email || !senha) { showError('Preencha e-mail e senha.'); return; }
+    const btn = document.querySelector('.btn-login');
+    setLoading(btn, true);
+    try {
+      await signInWithEmailAndPassword(auth, email, senha);
+    } catch (e) {
+      showError(friendlyError(e.code));
+      setLoading(btn, false);
+    }
+  });
+
+  // Enter no campo senha dispara login
+  document.getElementById('senha').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.querySelector('.btn-login').click();
+  });
+
+  // Login Google
+  document.querySelector('.btn-google').addEventListener('click', async () => {
+    hideError();
+    const btn = document.querySelector('.btn-google');
+    setLoading(btn, true);
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (e) {
+      showError(friendlyError(e.code));
+      setLoading(btn, false);
+    }
+  });
+</script>
 </body>
 </html>

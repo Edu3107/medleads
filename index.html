@@ -2251,22 +2251,27 @@ async function saveLeads() {
 }
 
 async function loadLeads() {
+  const fallback = () => {
+    leads = JSON.parse(localStorage.getItem('medleads_leads') || 'null') || SAMPLE_LEADS.map(l => ({...l}));
+  };
   if (_db && _uid) {
     try {
-      const doc = await _db.collection('users').doc(_uid).get();
+      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000));
+      const doc = await Promise.race([_db.collection('users').doc(_uid).get(), timeout]);
       if (doc.exists && doc.data().leads && doc.data().leads.length > 0) {
         leads = doc.data().leads;
+        localStorage.setItem('medleads_leads', JSON.stringify(leads));
       } else {
-        // Primeiro acesso: carregar dados de exemplo e salvar
-        leads = SAMPLE_LEADS.map(l => ({...l}));
-        await saveLeads();
+        const cached = localStorage.getItem('medleads_leads');
+        leads = cached ? JSON.parse(cached) : SAMPLE_LEADS.map(l => ({...l}));
+        saveLeads();
       }
     } catch(e) {
-      console.warn('Firestore load error:', e);
-      leads = JSON.parse(localStorage.getItem('medleads_leads') || 'null') || SAMPLE_LEADS.map(l => ({...l}));
+      console.warn('Firestore indisponivel, usando cache local:', e.message);
+      fallback();
     }
   } else {
-    leads = JSON.parse(localStorage.getItem('medleads_leads') || 'null') || SAMPLE_LEADS.map(l => ({...l}));
+    fallback();
   }
   nextId = leads.length > 0 ? Math.max(...leads.map(l => l.id)) + 1 : 1;
   filteredLeads = [...leads];
@@ -2307,8 +2312,6 @@ window.toggleSidebar = function(force) {
 //  INIT
 // ═══════════════════════════════════════════════
 window.initApp = async function() {
-  // Mostrar loading
-  document.getElementById('page-dashboard').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:300px;color:var(--text3);font-size:14px;gap:12px"><div style="width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite"></div>Carregando dados...</div>';
   await loadLeads();
   renderDashboard();
 };

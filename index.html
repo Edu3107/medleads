@@ -2918,18 +2918,23 @@ window.deleteCurrentLead = function() {
 //  EXPORTAR CSV
 // ═══════════════════════════════════════════════
 window.exportCSV = function() {
-  const headers = ['Nome','CRM','E-mail','WhatsApp','Especialidade','Cidade','Curso','Status','Origem','Valor','Score','Observações'];
+  const SEP = ';';
+  const headers = ['Nome','CRM','E-mail','WhatsApp','Especialidade','Cidade','Curso','Status','Origem','Valor (R$)','Score','Observacoes'];
   const rows = leads.map(l => [
     l.nome||'', l.crm||'', l.email||'', l.whats||'', l.spec||'', l.cidade||'',
-    l.curso||'', l.status||'', l.origem||'', l.valor||0, l.score||0, (l.obs||'').replace(/,/g,' ')
+    l.curso||'', l.status||'', l.origem||'',
+    String(l.valor||0).replace('.',','),
+    l.score||0,
+    (l.obs||'').replace(/;/g,' ').replace(/\n/g,' ')
   ]);
-  const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
-  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'});
+  const esc = v => '"' + String(v).replace(/"/g,'""') + '"';
+  const csv = 'sep=;\n' + [headers, ...rows].map(r => r.map(esc).join(SEP)).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
-  a.href = url; a.download = `MedLeads_${new Date().toISOString().slice(0,10)}.csv`;
+  a.href = url; a.download = 'MedLeads_' + new Date().toISOString().slice(0,10) + '.csv';
   a.click(); URL.revokeObjectURL(url);
-  showToast('CSV exportado com sucesso!', 'success');
+  showToast('CSV exportado! Abra normalmente no Excel.', 'success');
 };
 
 // ═══════════════════════════════════════════════

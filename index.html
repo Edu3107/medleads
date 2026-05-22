@@ -411,6 +411,7 @@ body {
 }
 .login-signup-row a:hover { color: #f0c96b; }
 
+@keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -1555,49 +1556,88 @@ tbody tr:hover { background: var(--bg3); }
         <span class="orn-line"></span>
       </div>
 
-      <div class="login-title">Entrar</div>
-      <div class="login-subtitle">Acesse sua conta MedLeads</div>
-
-      <div id="loginError" class="login-error"></div>
-      <div id="loginSuccess" class="login-success"></div>
-
-      <div class="login-field">
-        <label>E-mail</label>
-        <div class="login-input-wrap">
-          <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>
-          <input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="email">
+      <!-- PAINEL: LOGIN -->
+      <div id="loginPanel">
+        <div class="login-title">Entrar</div>
+        <div class="login-subtitle">Acesse sua conta MedLeads</div>
+        <div id="loginError" class="login-error"></div>
+        <div id="loginSuccess" class="login-success"></div>
+        <div class="login-field">
+          <label>E-mail</label>
+          <div class="login-input-wrap">
+            <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>
+            <input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="email">
+          </div>
         </div>
-      </div>
-
-      <div class="login-field">
-        <label>Senha</label>
-        <div class="login-input-wrap">
-          <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+        <div class="login-field">
+          <label>Senha</label>
+          <div class="login-input-wrap">
+            <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+          </div>
         </div>
+        <div class="login-forgot"><a href="#" onclick="showPanel('forgotPanel');return false;">Esqueceu a senha?</a></div>
+        <button class="btn-login" onclick="handleLogin()">Entrar na Plataforma</button>
+        <div class="login-divider"><span class="div-line"></span><span>ou continue com</span><span class="div-line"></span></div>
+        <button class="btn-google" onclick="handleGoogleLogin()">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Continuar com Google
+        </button>
+        <div class="login-signup-row">Não tenho conta — <a href="#" onclick="showPanel('signupPanel');return false;">criar agora</a></div>
       </div>
 
-      <div class="login-forgot"><a href="#">Esqueceu a senha?</a></div>
-
-      <button class="btn-login" onclick="handleLogin()">Entrar na Plataforma</button>
-
-      <div class="login-divider">
-        <span class="div-line"></span>
-        <span>ou continue com</span>
-        <span class="div-line"></span>
+      <!-- PAINEL: CRIAR CONTA -->
+      <div id="signupPanel" style="display:none">
+        <div class="login-title">Criar conta</div>
+        <div class="login-subtitle">Comece gratuitamente agora</div>
+        <div id="signupError" class="login-error"></div>
+        <div id="signupSuccess" class="login-success"></div>
+        <div class="login-field">
+          <label>E-mail</label>
+          <div class="login-input-wrap">
+            <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>
+            <input type="email" id="signupEmail" placeholder="seu@email.com">
+          </div>
+        </div>
+        <div class="login-field">
+          <label>Senha</label>
+          <div class="login-input-wrap">
+            <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="signupPassword" placeholder="mínimo 6 caracteres">
+          </div>
+        </div>
+        <div class="login-field">
+          <label>Confirmar Senha</label>
+          <div class="login-input-wrap">
+            <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="signupPassword2" placeholder="repita a senha">
+          </div>
+        </div>
+        <button class="btn-login" id="btnSignup" onclick="handleSignup()">Criar Conta</button>
+        <div class="login-signup-row" style="margin-top:.8rem">Já tenho conta — <a href="#" onclick="showPanel('loginPanel');return false;">entrar</a></div>
       </div>
 
-      <button class="btn-google" onclick="handleGoogleLogin()">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-        </svg>
-        Continuar com Google
-      </button>
-
-      <div class="login-signup-row">Não tenho conta — <a href="#">criar agora</a></div>
+      <!-- PAINEL: ESQUECEU A SENHA -->
+      <div id="forgotPanel" style="display:none">
+        <div class="login-title">Recuperar senha</div>
+        <div class="login-subtitle">Enviaremos um link para seu e-mail</div>
+        <div id="forgotError" class="login-error"></div>
+        <div id="forgotSuccess" class="login-success"></div>
+        <div class="login-field">
+          <label>E-mail</label>
+          <div class="login-input-wrap">
+            <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>
+            <input type="email" id="forgotEmail" placeholder="seu@email.com">
+          </div>
+        </div>
+        <button class="btn-login" id="btnForgot" onclick="handleForgotPassword()">Enviar Link de Recuperação</button>
+        <div class="login-signup-row" style="margin-top:.8rem"><a href="#" onclick="showPanel('loginPanel');return false;">← Voltar ao login</a></div>
+      </div>
     </div>
   </aside>
 </div>
@@ -1983,6 +2023,7 @@ tbody tr:hover { background: var(--bg3); }
 <!-- FIREBASE compat SDKs -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 // ─── CONFIGURAÇÃO FIREBASE ─────────────────────────────────────
 const firebaseConfig = {
@@ -1996,6 +2037,8 @@ const firebaseConfig = {
 };
 
 let _auth = null;
+let _db   = null;
+let _uid  = null;
 
 function _showError(msg) {
   const el = document.getElementById('loginError');
@@ -2016,6 +2059,7 @@ function _showLogin() {
 }
 
 function _showApp(user) {
+  _uid = user.uid || null;
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   const name = (user.displayName || user.email || 'Usuário').split('@')[0];
@@ -2025,10 +2069,9 @@ function _showApp(user) {
 }
 
 function _showDemo() {
-  _showApp({ displayName: 'Demo ISA', email: 'demo@isadigital.com.br' });
+  _showApp({ displayName: 'Demo ISA', email: 'demo@isadigital.com.br', uid: null });
 }
 
-// Inicializa Firebase após load; cai em demo se SDK ausente ou config placeholder
 function _initFirebase() {
   if (typeof firebase === 'undefined' || firebaseConfig.apiKey === 'AIzaSyPLACEHOLDER') {
     _showDemo(); return;
@@ -2036,6 +2079,7 @@ function _initFirebase() {
   try {
     firebase.initializeApp(firebaseConfig);
     _auth = firebase.auth();
+    _db   = firebase.firestore();
     _auth.onAuthStateChanged(user => { if (user) _showApp(user); else _showLogin(); });
   } catch(e) {
     console.warn('Firebase erro:', e.message);
@@ -2044,35 +2088,118 @@ function _initFirebase() {
 }
 window.addEventListener('load', _initFirebase);
 
-// Funções globais chamadas pelos botões onclick
+// ── LOGIN E-MAIL/SENHA ──
 function handleLogin() {
   const email = document.getElementById('loginEmail').value.trim();
   const pass  = document.getElementById('loginPassword').value;
   document.getElementById('loginError').style.display = 'none';
-
   if (!email || !pass) { _showError('Preencha e-mail e senha.'); return; }
-  if (!_auth)           { _showDemo(); return; }
-
-  _auth.signInWithEmailAndPassword(email, pass).catch(e => {
-    const msgs = {
-      'auth/user-not-found':    'Usuário não encontrado.',
-      'auth/wrong-password':    'Senha incorreta.',
-      'auth/invalid-email':     'E-mail inválido.',
-      'auth/invalid-credential':'Credenciais inválidas.',
-    };
-    _showError(msgs[e.code] || 'Erro: ' + e.message);
-  });
+  if (!_auth) { _showDemo(); return; }
+  const btn = document.querySelector('.btn-login');
+  btn.disabled = true; btn.style.opacity = '.6';
+  _auth.signInWithEmailAndPassword(email, pass)
+    .catch(e => {
+      const msgs = {
+        'auth/user-not-found':    'Usuário não encontrado.',
+        'auth/wrong-password':    'Senha incorreta.',
+        'auth/invalid-email':     'E-mail inválido.',
+        'auth/invalid-credential':'E-mail ou senha incorretos.',
+        'auth/too-many-requests': 'Muitas tentativas. Aguarde.',
+      };
+      _showError(msgs[e.code] || 'Erro: ' + e.message);
+      btn.disabled = false; btn.style.opacity = '1';
+    });
 }
 
+// ── GOOGLE ──
 function handleGoogleLogin() {
   if (!_auth) { _showDemo(); return; }
   const provider = new firebase.auth.GoogleAuthProvider();
   _auth.signInWithPopup(provider).catch(e => _showError('Erro com Google: ' + e.message));
 }
 
+// ── LOGOUT ──
 function handleLogout() {
   if (_auth) _auth.signOut();
   else _showLogin();
+}
+
+// ── CRIAR CONTA ──
+function handleSignup() {
+  const email = document.getElementById('signupEmail').value.trim();
+  const pass  = document.getElementById('signupPassword').value;
+  const pass2 = document.getElementById('signupPassword2').value;
+  if (!email || !pass) { _showSignupError('Preencha e-mail e senha.'); return; }
+  if (pass.length < 6) { _showSignupError('Senha deve ter ao menos 6 caracteres.'); return; }
+  if (pass !== pass2)  { _showSignupError('Senhas não conferem.'); return; }
+  if (!_auth) { _showDemo(); return; }
+  const btn = document.getElementById('btnSignup');
+  btn.disabled = true; btn.style.opacity = '.6';
+  _auth.createUserWithEmailAndPassword(email, pass)
+    .then(() => { _showSignupSuccess('Conta criada! Entrando...'); })
+    .catch(e => {
+      const msgs = {
+        'auth/email-already-in-use': 'E-mail já cadastrado.',
+        'auth/invalid-email':        'E-mail inválido.',
+        'auth/weak-password':        'Senha muito fraca.',
+      };
+      _showSignupError(msgs[e.code] || 'Erro: ' + e.message);
+      btn.disabled = false; btn.style.opacity = '1';
+    });
+}
+
+function _showSignupError(msg) {
+  const el = document.getElementById('signupError');
+  if(el){ el.textContent = msg; el.style.display = 'block'; }
+  const ok = document.getElementById('signupSuccess');
+  if(ok) ok.style.display = 'none';
+}
+function _showSignupSuccess(msg) {
+  const el = document.getElementById('signupSuccess');
+  if(el){ el.textContent = msg; el.style.display = 'block'; }
+  const err = document.getElementById('signupError');
+  if(err) err.style.display = 'none';
+}
+
+// ── ESQUECEU A SENHA ──
+function handleForgotPassword() {
+  const email = document.getElementById('forgotEmail').value.trim();
+  if (!email) { _showForgotError('Digite seu e-mail.'); return; }
+  if (!_auth) { _showForgotError('Firebase não disponível.'); return; }
+  const btn = document.getElementById('btnForgot');
+  btn.disabled = true; btn.style.opacity = '.6';
+  _auth.sendPasswordResetEmail(email)
+    .then(() => {
+      _showForgotSuccess('E-mail enviado! Verifique sua caixa de entrada.');
+      btn.disabled = false; btn.style.opacity = '1';
+    })
+    .catch(e => {
+      const msgs = {
+        'auth/user-not-found': 'E-mail não encontrado.',
+        'auth/invalid-email':  'E-mail inválido.',
+      };
+      _showForgotError(msgs[e.code] || 'Erro: ' + e.message);
+      btn.disabled = false; btn.style.opacity = '1';
+    });
+}
+function _showForgotError(msg) {
+  const el = document.getElementById('forgotError');
+  if(el){ el.textContent = msg; el.style.display = 'block'; }
+  const ok = document.getElementById('forgotSuccess');
+  if(ok) ok.style.display = 'none';
+}
+function _showForgotSuccess(msg) {
+  const el = document.getElementById('forgotSuccess');
+  if(el){ el.textContent = msg; el.style.display = 'block'; }
+  const err = document.getElementById('forgotError');
+  if(err) err.style.display = 'none';
+}
+
+// ── ALTERNAR PAINEIS DE LOGIN ──
+function showPanel(panel) {
+  ['loginPanel','signupPanel','forgotPanel'].forEach(id => {
+    document.getElementById(id).style.display = id === panel ? 'block' : 'none';
+  });
 }
 </script>
 
@@ -2100,16 +2227,49 @@ const SAMPLE_LEADS = [
   { id:8, nome:'Dra. Patrícia Oliveira', crm:'CRM/PR 678901', email:'patricia.oliveira@hc.pr.br', whats:'(41) 91098-7654', spec:'Cardiologista', cidade:'Curitiba, PR', curso:'Ecocardiograma Avançado', status:'Convertido', origem:'Instagram', valor:2990, obs:'Segunda matrícula! Já fez o básico.', score:100, contato:'3 dias atrás', hist:[{emoji:'✅',acao:'Matrícula confirmada',quando:'3 dias atrás'},{emoji:'🔄',acao:'Recompra (2ª matrícula)',quando:'3 dias atrás'}]},
 ];
 
-let leads = JSON.parse(localStorage.getItem('medleads_leads') || 'null') || SAMPLE_LEADS.map(l => ({...l}));
-let nextId = Math.max(...leads.map(l => l.id)) + 1;
+let leads = [];
+let nextId = 1;
 let currentPage = 1;
 const PER_PAGE = 6;
 let filteredLeads = [...leads];
 let currentDrawerLeadId = null;
 let currentPage2 = 'dashboard';
 
-function saveLeads() {
-  localStorage.setItem('medleads_leads', JSON.stringify(leads));
+// ── FIRESTORE: salvar/carregar leads ──
+async function saveLeads() {
+  if (_db && _uid) {
+    // Salva no Firestore (sobrescreve o documento do usuário)
+    try {
+      await _db.collection('users').doc(_uid).set({ leads: leads });
+    } catch(e) {
+      console.warn('Firestore save error:', e);
+      localStorage.setItem('medleads_leads', JSON.stringify(leads));
+    }
+  } else {
+    localStorage.setItem('medleads_leads', JSON.stringify(leads));
+  }
+}
+
+async function loadLeads() {
+  if (_db && _uid) {
+    try {
+      const doc = await _db.collection('users').doc(_uid).get();
+      if (doc.exists && doc.data().leads && doc.data().leads.length > 0) {
+        leads = doc.data().leads;
+      } else {
+        // Primeiro acesso: carregar dados de exemplo e salvar
+        leads = SAMPLE_LEADS.map(l => ({...l}));
+        await saveLeads();
+      }
+    } catch(e) {
+      console.warn('Firestore load error:', e);
+      leads = JSON.parse(localStorage.getItem('medleads_leads') || 'null') || SAMPLE_LEADS.map(l => ({...l}));
+    }
+  } else {
+    leads = JSON.parse(localStorage.getItem('medleads_leads') || 'null') || SAMPLE_LEADS.map(l => ({...l}));
+  }
+  nextId = leads.length > 0 ? Math.max(...leads.map(l => l.id)) + 1 : 1;
+  filteredLeads = [...leads];
 }
 
 // ═══════════════════════════════════════════════
@@ -2146,7 +2306,10 @@ window.toggleSidebar = function(force) {
 // ═══════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════
-window.initApp = function() {
+window.initApp = async function() {
+  // Mostrar loading
+  document.getElementById('page-dashboard').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:300px;color:var(--text3);font-size:14px;gap:12px"><div style="width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite"></div>Carregando dados...</div>';
+  await loadLeads();
   renderDashboard();
 };
 

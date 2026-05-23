@@ -1712,7 +1712,7 @@ tbody tr:hover { background: var(--bg3); }
       <button class="hamburger" onclick="toggleSidebar()">☰</button>
       <div class="topbar-title" id="topbarTitle">Dashboard</div>
       <div class="topbar-actions">
-        <button class="btn-outline" onclick="exportXLSX()" title="Exportar leads para Excel">⬇ Excel</button>
+        <button class="btn-outline" onclick="exportXLSX()" title="Exportar planilha">⬇ Planilha</button>
         <button class="btn-action" onclick="openModal()">＋ Novo Lead</button>
       </div>
     </header>
@@ -2931,36 +2931,56 @@ window.deleteCurrentLead = function() {
 window.exportCSV = function() {}; // legado
 
 window.exportXLSX = function() {
-  // Envia os dados para o servidor Python gerar o XLSX real
-  // Como é app estático, usamos um Worker inline com pyodide
-  // Fallback: download do arquivo modelo pré-gerado
-  showToast('Gerando Excel... aguarde', 'success');
+  // Gera CSV com separador de ponto e vírgula — abre perfeitamente no Excel Brasil
+  const SEP = ';';
+  const NL  = '\r\n';
+  const q   = v => '"' + String(v||'').replace(/"/g,'""') + '"';
 
-  // Monta JSON com os leads
-  const payload = JSON.stringify({ leads: leads.map(l => ({
-    nome: l.nome||'', crm: l.crm||'', email: l.email||'',
-    whats: l.whats||'', spec: l.spec||'', cidade: l.cidade||'',
-    curso: l.curso||'', status: l.status||'', origem: l.origem||'',
-    valor: l.valor||0, score: l.score||0, obs: l.obs||''
-  }))});
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const receita = leads.filter(l=>l.status==='Convertido').reduce((s,l)=>s+(l.valor||0),0);
+  const scoreMedia = leads.length>0 ? (leads.reduce((s,l)=>s+(l.score||0),0)/leads.length).toFixed(1) : 0;
 
-  // Usa pyodide via CDN para rodar Python no browser
-  if (window._pyodideReady) {
-    _gerarXlsx(payload);
-    return;
-  }
+  const hdrs = ['Nome','CRM','E-mail','WhatsApp','Especialidade','Cidade',
+                'Curso de Interesse','Status','Origem','Valor (R$)','Score','Observacoes'];
 
-  showToast('Carregando gerador... (~10s na primeira vez)', 'success');
-  const script = document.createElement('script');
-  script.src = 'https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js';
-  script.onload = async () => {
-    const pyodide = await loadPyodide();
-    await pyodide.loadPackage('openpyxl');
-    window._pyodide = pyodide;
-    window._pyodideReady = true;
-    _gerarXlsx(payload);
-  };
-  document.head.appendChild(script);
+  const rows = leads.map(l => [
+    l.nome||'', l.crm||'', l.email||'', l.whats||'', l.spec||'', l.cidade||'',
+    l.curso||'', l.status||'', l.origem||'',
+    (l.valor||0), (l.score||0), (l.obs||'').replace(/;/g,' ').replace(/\r?\n/g,' ')
+  ]);
+
+  const totRow = ['TOTAL / MEDIAS','','','','','','','','',
+    receita, scoreMedia, ''];
+
+  const stCount = {};
+  leads.forEach(l=>{ stCount[l.status]=(stCount[l.status]||0)+1; });
+  const resumo = Object.entries(stCount)
+    .map(([st,cnt])=>[st, cnt, (cnt/leads.length*100).toFixed(1)+'%']);
+
+  // Aba 1: Leads
+  let csv = 'sep=;' + NL;
+  csv += q('MedLeads - Relatorio de Leads') + NL;
+  csv += q('ISA Digital | Exportado em ' + hoje) + NL;
+  csv += NL;
+  csv += hdrs.map(q).join(SEP) + NL;
+  rows.forEach(r => { csv += r.map(q).join(SEP) + NL; });
+  csv += totRow.map(q).join(SEP) + NL;
+  csv += NL + NL;
+
+  // Resumo por status (mesma aba, abaixo)
+  csv += q('RESUMO POR STATUS') + NL;
+  csv += [q('Status'), q('Qtd. Leads'), q('% do Total')].join(SEP) + NL;
+  resumo.forEach(r => { csv += r.map(q).join(SEP) + NL; });
+  csv += [q('TOTAL'), q(leads.length), q('100%')].join(SEP) + NL;
+
+  const blob = new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'MedLeads_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Planilha exportada! Abra no Excel normalmente.', 'success');
 };
 
 async function _gerarXlsx(payload) {

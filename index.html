@@ -2931,121 +2931,139 @@ window.deleteCurrentLead = function() {
 window.exportCSV = function() {}; // legado
 
 window.exportXLSX = function() {
-  const esc = v => String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const hoje = new Date().toLocaleDateString('pt-BR');
-  const total = leads.length;
-  const receita = leads.filter(l=>l.status==='Convertido').reduce((s,l)=>s+(l.valor||0),0);
-  const scoreMedia = total>0 ? (leads.reduce((s,l)=>s+(l.score||0),0)/total).toFixed(1) : '0';
-  const stCount = {};
-  leads.forEach(l=>{ stCount[l.status]=(stCount[l.status]||0)+1; });
+  // Envia os dados para o servidor Python gerar o XLSX real
+  // Como é app estático, usamos um Worker inline com pyodide
+  // Fallback: download do arquivo modelo pré-gerado
+  showToast('Gerando Excel... aguarde', 'success');
 
-  const stStyleId = {Novo:'stNovo',Contato:'stCont',Negociando:'stNeg',Convertido:'stConv',Perdido:'stPerd'};
+  // Monta JSON com os leads
+  const payload = JSON.stringify({ leads: leads.map(l => ({
+    nome: l.nome||'', crm: l.crm||'', email: l.email||'',
+    whats: l.whats||'', spec: l.spec||'', cidade: l.cidade||'',
+    curso: l.curso||'', status: l.status||'', origem: l.origem||'',
+    valor: l.valor||0, score: l.score||0, obs: l.obs||''
+  }))});
 
-  const headerCols = ['Nome','CRM','E-mail','WhatsApp','Especialidade','Cidade','Curso de Interesse','Status','Origem','Valor (R$)','Score','Observacoes'];
+  // Usa pyodide via CDN para rodar Python no browser
+  if (window._pyodideReady) {
+    _gerarXlsx(payload);
+    return;
+  }
 
-  const dataRows = leads.map((l,i) => {
-    const s = i%2===0 ? '0' : '1';
-    const st = stStyleId[l.status] || ('r'+s);
-    return '<Row ss:Height="20">'
-      +'<Cell ss:StyleID="r'+s+'b"><Data ss:Type="String">'+esc(l.nome)+'</Data></Cell>'
-      +'<Cell ss:StyleID="r'+s+'"><Data ss:Type="String">'+esc(l.crm)+'</Data></Cell>'
-      +'<Cell ss:StyleID="r'+s+'"><Data ss:Type="String">'+esc(l.email)+'</Data></Cell>'
-      +'<Cell ss:StyleID="r'+s+'"><Data ss:Type="String">'+esc(l.whats)+'</Data></Cell>'
-      +'<Cell ss:StyleID="r'+s+'"><Data ss:Type="String">'+esc(l.spec)+'</Data></Cell>'
-      +'<Cell ss:StyleID="r'+s+'"><Data ss:Type="String">'+esc(l.cidade)+'</Data></Cell>'
-      +'<Cell ss:StyleID="r'+s+'"><Data ss:Type="String">'+esc(l.curso)+'</Data></Cell>'
-      +'<Cell ss:StyleID="'+st+'"><Data ss:Type="String">'+esc(l.status)+'</Data></Cell>'
-      +'<Cell ss:StyleID="r'+s+'"><Data ss:Type="String">'+esc(l.origem)+'</Data></Cell>'
-      +'<Cell ss:StyleID="val'+s+'"><Data ss:Type="Number">'+(l.valor||0)+'</Data></Cell>'
-      +'<Cell ss:StyleID="sc'+((l.score||0)>=70?'H':(l.score||0)>=40?'M':'L')+'"><Data ss:Type="Number">'+(l.score||0)+'</Data></Cell>'
-      +'<Cell ss:StyleID="r'+s+'"><Data ss:Type="String">'+esc(l.obs)+'</Data></Cell>'
-      +'</Row>';
-  }).join('');
+  showToast('Carregando gerador... (~10s na primeira vez)', 'success');
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js';
+  script.onload = async () => {
+    const pyodide = await loadPyodide();
+    await pyodide.loadPackage('openpyxl');
+    window._pyodide = pyodide;
+    window._pyodideReady = true;
+    _gerarXlsx(payload);
+  };
+  document.head.appendChild(script);
+};
 
-  const resumoRows = Object.entries(stCount).map(([st,cnt]) => {
-    const sid = stStyleId[st]||'foot';
-    return '<Row ss:Height="20">'
-      +'<Cell ss:StyleID="'+sid+'"><Data ss:Type="String">'+esc(st)+'</Data></Cell>'
-      +'<Cell ss:StyleID="foot"><Data ss:Type="Number">'+cnt+'</Data></Cell>'
-      +'<Cell ss:StyleID="foot"><Data ss:Type="String">'+(cnt/total*100).toFixed(1)+'%</Data></Cell>'
-      +'</Row>';
-  }).join('');
+async function _gerarXlsx(payload) {
+  const py = window._pyodide;
+  py.globals.set('payload_json', payload);
 
-  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
-    +'<?mso-application progid="Excel.Sheet"?>\n'
-    +'<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" '
-    +'xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" '
-    +'xmlns:x="urn:schemas-microsoft-com:office:excel">\n'
-    +'<Styles>\n'
-    +mkStyle('title','#E8C97A','#111113',14,1)
-    +mkStyle('sub','#6B6760','#111113',9,0,1)
-    +mkStyle('header','#FFFFFF','#8B6914',10,1,0,'Center')
-    +mkStyle('r0','#F0EDE6','#1E1E24',9)
-    +mkStyle('r1','#F0EDE6','#16161A',9)
-    +mkStyle('r0b','#F0EDE6','#1E1E24',9,1)
-    +mkStyle('r1b','#F0EDE6','#16161A',9,1)
-    +mkStyle('val0','#E8C97A','#1E1E24',9,1,0,'Right','R$ #,##0')
-    +mkStyle('val1','#E8C97A','#16161A',9,1,0,'Right','R$ #,##0')
-    +mkStyle('scH','#4CAF7A','#1E1E24',9,1,0,'Center')
-    +mkStyle('scM','#E8A94C','#1E1E24',9,1,0,'Center')
-    +mkStyle('scL','#E05555','#1E1E24',9,1,0,'Center')
-    +mkStyle('stNovo','#5B8DEF','#1C2E4A',9,1,0,'Center')
-    +mkStyle('stCont','#E8A94C','#2E2210',9,1,0,'Center')
-    +mkStyle('stNeg','#C9A84C','#2A2010',9,1,0,'Center')
-    +mkStyle('stConv','#4CAF7A','#0F2A1A',9,1,0,'Center')
-    +mkStyle('stPerd','#E05555','#2A1010',9,1,0,'Center')
-    +mkStyle('foot','#E8C97A','#8B6914',9,1,0,'Center')
-    +mkStyle('footval','#E8C97A','#8B6914',9,1,0,'Right','R$ #,##0')
-    +'</Styles>\n'
+  const b64 = await py.runPythonAsync(`
+import json, base64, io
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+from datetime import date
 
-    // ABA LEADS
-    +'<Worksheet ss:Name="Leads"><Table>\n'
-    +'<Column ss:Width="140"/><Column ss:Width="75"/><Column ss:Width="155"/>'
-    +'<Column ss:Width="90"/><Column ss:Width="100"/><Column ss:Width="110"/>'
-    +'<Column ss:Width="130"/><Column ss:Width="72"/><Column ss:Width="90"/>'
-    +'<Column ss:Width="68"/><Column ss:Width="42"/><Column ss:Width="180"/>\n'
-    +'<Row ss:Height="34"><Cell ss:MergeAcross="11" ss:StyleID="title"><Data ss:Type="String">MedLeads — Relatório de Leads</Data></Cell></Row>\n'
-    +'<Row ss:Height="16"><Cell ss:MergeAcross="11" ss:StyleID="sub"><Data ss:Type="String">ISA Digital — Instituto Saber e Aprender  |  Exportado em '+hoje+'</Data></Cell></Row>\n'
-    +'<Row ss:Height="28">'+headerCols.map(h=>'<Cell ss:StyleID="header"><Data ss:Type="String">'+h+'</Data></Cell>').join('')+'</Row>\n'
-    +dataRows
-    +'<Row ss:Height="22">'
-    +'<Cell ss:StyleID="foot"><Data ss:Type="String">TOTAL / MÉDIAS</Data></Cell>'
-    +'<Cell ss:StyleID="foot"><Data ss:Type="String"></Data></Cell>'
-    +'<Cell ss:StyleID="foot"><Data ss:Type="String"></Data></Cell>'
-    +'<Cell ss:StyleID="foot"><Data ss:Type="String"></Data></Cell>'
-    +'<Cell ss:StyleID="foot"><Data ss:Type="String"></Data></Cell>'
-    +'<Cell ss:StyleID="foot"><Data ss:Type="String"></Data></Cell>'
-    +'<Cell ss:StyleID="foot"><Data ss:Type="String"></Data></Cell>'
-    +'<Cell ss:StyleID="foot"><Data ss:Type="String"></Data></Cell>'
-    +'<Cell ss:StyleID="foot"><Data ss:Type="String"></Data></Cell>'
-    +'<Cell ss:StyleID="footval"><Data ss:Type="Number">'+receita+'</Data></Cell>'
-    +'<Cell ss:StyleID="foot"><Data ss:Type="Number">'+scoreMedia+'</Data></Cell>'
-    +'<Cell ss:StyleID="foot"><Data ss:Type="String"></Data></Cell>'
-    +'</Row>\n'
-    +'</Table></Worksheet>\n'
+data = json.loads(payload_json)
+leads_data = data['leads']
 
-    // ABA RESUMO
-    +'<Worksheet ss:Name="Resumo"><Table>\n'
-    +'<Column ss:Width="100"/><Column ss:Width="80"/><Column ss:Width="80"/>\n'
-    +'<Row ss:Height="30"><Cell ss:MergeAcross="2" ss:StyleID="title"><Data ss:Type="String">Resumo por Status</Data></Cell></Row>\n'
-    +'<Row ss:Height="24">'+['Status','Qtd. Leads','% do Total'].map(h=>'<Cell ss:StyleID="header"><Data ss:Type="String">'+h+'</Data></Cell>').join('')+'</Row>\n'
-    +resumoRows
-    +'<Row ss:Height="22">'
-    +'<Cell ss:StyleID="foot"><Data ss:Type="String">TOTAL</Data></Cell>'
-    +'<Cell ss:StyleID="foot"><Data ss:Type="Number">'+total+'</Data></Cell>'
-    +'<Cell ss:StyleID="foot"><Data ss:Type="String">100%</Data></Cell>'
-    +'</Row>\n'
-    +'</Table></Worksheet>\n'
-    +'</Workbook>';
+GD='8B6914';GL='E8C97A';BG1='1E1E24';BG2='16161A';BD='111113'
+WH='F0EDE6';MT='A8A49C';SC='4CAF7A';DN='E05555';IN='5B8DEF';WN='E8A94C';GO='C9A84C'
+thin=Side(style='thin',color='2A2A2E')
+bord=Border(left=thin,right=thin,top=thin,bottom=thin)
+scfg={'Novo':('1C2E4A',IN),'Contato':('2E2210',WN),'Negociando':('2A2010',GO),'Convertido':('0F2A1A',SC),'Perdido':('2A1010',DN)}
+wb=Workbook(); ws=wb.active; ws.title='Leads'; ws.sheet_properties.tabColor=GD
+ws.merge_cells('A1:L1'); c=ws['A1']; c.value='MedLeads - Relatorio de Leads'
+c.font=Font(name='Arial',size=15,bold=True,color=GL); c.fill=PatternFill('solid',fgColor=BD)
+c.alignment=Alignment(horizontal='left',vertical='center',indent=1); ws.row_dimensions[1].height=36
+ws.merge_cells('A2:L2'); c=ws['A2']
+c.value=f"ISA Digital | Exportado em {date.today().strftime('%d/%m/%Y')}"
+c.font=Font(name='Arial',size=9,italic=True,color=MT); c.fill=PatternFill('solid',fgColor=BD)
+c.alignment=Alignment(horizontal='left',vertical='center',indent=1); ws.row_dimensions[2].height=18
+for col in range(1,13): ws.cell(3,col).fill=PatternFill('solid',fgColor=BD)
+ws.row_dimensions[3].height=6
+hdrs=['Nome','CRM','E-mail','WhatsApp','Especialidade','Cidade','Curso','Status','Origem','Valor (R$)','Score','Observacoes']
+for ci,h in enumerate(hdrs,1):
+    c=ws.cell(4,ci,h); c.font=Font(name='Arial',size=10,bold=True,color='FFFFFF')
+    c.fill=PatternFill('solid',fgColor=GD); c.alignment=Alignment(horizontal='center',vertical='center',wrap_text=True); c.border=bord
+ws.row_dimensions[4].height=28
+bgs=[BG1,BG2]
+for ri,row in enumerate(leads_data,5):
+    bg=bgs[(ri-5)%2]; ws.row_dimensions[ri].height=20
+    vals=[row.get('nome',''),row.get('crm',''),row.get('email',''),row.get('whats',''),row.get('spec',''),row.get('cidade',''),row.get('curso',''),row.get('status',''),row.get('origem',''),row.get('valor',0),row.get('score',0),row.get('obs','')]
+    for ci,val in enumerate(vals,1):
+        c=ws.cell(ri,ci,val); c.fill=PatternFill('solid',fgColor=bg); c.border=bord
+        c.font=Font(name='Arial',size=9,color=WH); c.alignment=Alignment(vertical='center')
+        if ci==1: c.font=Font(name='Arial',size=9,bold=True,color=WH)
+        elif ci==8:
+            if val in scfg:
+                sbg,sfg=scfg[val]; c.fill=PatternFill('solid',fgColor=sbg)
+                c.font=Font(name='Arial',size=9,bold=True,color=sfg); c.alignment=Alignment(horizontal='center',vertical='center')
+        elif ci==10:
+            c.number_format='R$ #,##0'; c.font=Font(name='Arial',size=9,bold=True,color=GL)
+            c.alignment=Alignment(horizontal='right',vertical='center')
+            try: c.value=float(val)
+            except: c.value=0
+        elif ci==11:
+            sc=int(val) if val else 0; cor=SC if sc>=70 else(WN if sc>=40 else DN)
+            c.font=Font(name='Arial',size=9,bold=True,color=cor); c.alignment=Alignment(horizontal='center',vertical='center'); c.value=sc
+tr=4+len(leads_data)+1; ws.row_dimensions[tr].height=22
+for ci in range(1,13):
+    c=ws.cell(tr,ci); c.fill=PatternFill('solid',fgColor=GD); c.border=bord
+    c.font=Font(name='Arial',size=9,bold=True,color=GL); c.alignment=Alignment(horizontal='center',vertical='center')
+ws.cell(tr,1).value='TOTAL / MEDIAS'; ws.cell(tr,1).alignment=Alignment(horizontal='left',vertical='center',indent=1)
+ws.cell(tr,10).value=sum(r.get('valor',0) or 0 for r in leads_data); ws.cell(tr,10).number_format='R$ #,##0'; ws.cell(tr,10).alignment=Alignment(horizontal='right',vertical='center')
+scores=[r.get('score',0) or 0 for r in leads_data]
+ws.cell(tr,11).value=round(sum(scores)/len(scores),1) if scores else 0
+for i,w in enumerate([30,16,32,18,20,22,28,14,18,13,8,42],1): ws.column_dimensions[get_column_letter(i)].width=w
+ws.freeze_panes='A5'
+ws2=wb.create_sheet('Resumo'); ws2.sheet_properties.tabColor=GD
+ws2.merge_cells('A1:C1'); c=ws2['A1']; c.value='Resumo por Status'
+c.font=Font(name='Arial',size=13,bold=True,color=GL); c.fill=PatternFill('solid',fgColor=BD)
+c.alignment=Alignment(horizontal='left',vertical='center',indent=1); ws2.row_dimensions[1].height=30
+for ci,h in enumerate(['Status','Qtd. Leads','% do Total'],1):
+    c=ws2.cell(3,ci,h); c.font=Font(name='Arial',size=10,bold=True,color='FFFFFF')
+    c.fill=PatternFill('solid',fgColor=GD); c.alignment=Alignment(horizontal='center',vertical='center'); c.border=bord
+ws2.row_dimensions[3].height=24
+stc={}
+for row in leads_data: st=row.get('status',''); stc[st]=stc.get(st,0)+1
+total=len(leads_data)
+for ri,(st,cnt) in enumerate(stc.items(),4):
+    sbg,sfg=scfg.get(st,(BG1,WH)); ws2.row_dimensions[ri].height=20
+    for ci,val in enumerate([st,cnt,f"{cnt/total*100:.1f}%"],1):
+        c=ws2.cell(ri,ci,val); c.fill=PatternFill('solid',fgColor=sbg)
+        c.font=Font(name='Arial',size=10,bold=(ci==1),color=sfg if ci==1 else WH)
+        c.alignment=Alignment(horizontal='center',vertical='center'); c.border=bord
+tr2=4+len(stc)
+for ci,val in enumerate(['TOTAL',total,'100%'],1):
+    c=ws2.cell(tr2,ci,val); c.fill=PatternFill('solid',fgColor=GD)
+    c.font=Font(name='Arial',size=10,bold=True,color=GL); c.alignment=Alignment(horizontal='center',vertical='center'); c.border=bord
+ws2.column_dimensions['A'].width=18; ws2.column_dimensions['B'].width=14; ws2.column_dimensions['C'].width=14
+buf=io.BytesIO(); wb.save(buf); buf.seek(0)
+base64.b64encode(buf.read()).decode()
+`);
 
-  const blob = new Blob([xml], {type:'application/vnd.ms-excel;charset=utf-8'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
+  const bytes = atob(b64);
+  const arr = new Uint8Array(bytes.length);
+  for (let i=0; i<bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  const blob = new Blob([arr], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
   a.href = url;
-  a.download = 'MedLeads_' + new Date().toISOString().slice(0,10) + '.xls';
+  a.download = 'MedLeads_' + new Date().toISOString().slice(0,10) + '.xlsx';
   a.click();
   URL.revokeObjectURL(url);
-  showToast('Excel exportado com sucesso!', 'success');
+  showToast('Excel gerado com sucesso!', 'success');
 };
 
 function mkStyle(id, fg, bg, sz, bold, italic, align, numFmt) {

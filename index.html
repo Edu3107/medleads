@@ -2931,130 +2931,138 @@ window.deleteCurrentLead = function() {
 window.exportCSV = function() {}; // legado
 
 window.exportXLSX = function() {
-  const statusStyle = {
-    'Novo':       'background:#1C2E4A;color:#5B8DEF;font-weight:bold',
-    'Contato':    'background:#2E2210;color:#E8A94C;font-weight:bold',
-    'Negociando': 'background:#2A2010;color:#C9A84C;font-weight:bold',
-    'Convertido': 'background:#0F2A1A;color:#4CAF7A;font-weight:bold',
-    'Perdido':    'background:#2A1010;color:#E05555;font-weight:bold',
-  };
-
-  const scoreColor = s => s >= 70 ? '#4CAF7A' : s >= 40 ? '#E8A94C' : '#E05555';
-
+  const esc = v => String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const hoje = new Date().toLocaleDateString('pt-BR');
   const total = leads.length;
   const receita = leads.filter(l=>l.status==='Convertido').reduce((s,l)=>s+(l.valor||0),0);
-  const scoreMedia = total > 0 ? (leads.reduce((s,l)=>s+(l.score||0),0)/total).toFixed(1) : 0;
+  const scoreMedia = total>0 ? (leads.reduce((s,l)=>s+(l.score||0),0)/total).toFixed(1) : '0';
+  const stCount = {};
+  leads.forEach(l=>{ stCount[l.status]=(stCount[l.status]||0)+1; });
 
-  // Contagem por status para resumo
-  const statusCount = {};
-  leads.forEach(l => { statusCount[l.status] = (statusCount[l.status]||0)+1; });
+  const stStyleId = {Novo:'stNovo',Contato:'stCont',Negociando:'stNeg',Convertido:'stConv',Perdido:'stPerd'};
 
-  const rowsHTML = leads.map((l,i) => {
-    const bg = i%2===0 ? '#1E1E24' : '#16161A';
-    const st = statusStyle[l.status] || '';
-    const sc = parseInt(l.score)||0;
-    return `<tr>
-      <td style="background:${bg};color:#F0EDE6;font-weight:bold;padding:6px 10px;border:1px solid #2A2A2E">${l.nome||''}</td>
-      <td style="background:${bg};color:#A8A49C;padding:6px 10px;border:1px solid #2A2A2E">${l.crm||''}</td>
-      <td style="background:${bg};color:#F0EDE6;padding:6px 10px;border:1px solid #2A2A2E">${l.email||''}</td>
-      <td style="background:${bg};color:#F0EDE6;padding:6px 10px;border:1px solid #2A2A2E">${l.whats||''}</td>
-      <td style="background:${bg};color:#F0EDE6;padding:6px 10px;border:1px solid #2A2A2E">${l.spec||''}</td>
-      <td style="background:${bg};color:#F0EDE6;padding:6px 10px;border:1px solid #2A2A2E">${l.cidade||''}</td>
-      <td style="background:${bg};color:#F0EDE6;padding:6px 10px;border:1px solid #2A2A2E">${l.curso||''}</td>
-      <td style="${st};padding:6px 10px;border:1px solid #2A2A2E;text-align:center">${l.status||''}</td>
-      <td style="background:${bg};color:#F0EDE6;padding:6px 10px;border:1px solid #2A2A2E">${l.origem||''}</td>
-      <td style="background:${bg};color:#E8C97A;font-weight:bold;padding:6px 10px;border:1px solid #2A2A2E;text-align:right">R$ ${(l.valor||0).toLocaleString('pt-BR')}</td>
-      <td style="background:${bg};color:${scoreColor(sc)};font-weight:bold;padding:6px 10px;border:1px solid #2A2A2E;text-align:center">${sc}</td>
-      <td style="background:${bg};color:#A8A49C;padding:6px 10px;border:1px solid #2A2A2E">${l.obs||''}</td>
-    </tr>`;
+  const headerCols = ['Nome','CRM','E-mail','WhatsApp','Especialidade','Cidade','Curso de Interesse','Status','Origem','Valor (R$)','Score','Observacoes'];
+
+  const dataRows = leads.map((l,i) => {
+    const s = i%2===0 ? '0' : '1';
+    const st = stStyleId[l.status] || ('r'+s);
+    return '<Row ss:Height="20">'
+      +'<Cell ss:StyleID="r'+s+'b"><Data ss:Type="String">'+esc(l.nome)+'</Data></Cell>'
+      +'<Cell ss:StyleID="r'+s+'"><Data ss:Type="String">'+esc(l.crm)+'</Data></Cell>'
+      +'<Cell ss:StyleID="r'+s+'"><Data ss:Type="String">'+esc(l.email)+'</Data></Cell>'
+      +'<Cell ss:StyleID="r'+s+'"><Data ss:Type="String">'+esc(l.whats)+'</Data></Cell>'
+      +'<Cell ss:StyleID="r'+s+'"><Data ss:Type="String">'+esc(l.spec)+'</Data></Cell>'
+      +'<Cell ss:StyleID="r'+s+'"><Data ss:Type="String">'+esc(l.cidade)+'</Data></Cell>'
+      +'<Cell ss:StyleID="r'+s+'"><Data ss:Type="String">'+esc(l.curso)+'</Data></Cell>'
+      +'<Cell ss:StyleID="'+st+'"><Data ss:Type="String">'+esc(l.status)+'</Data></Cell>'
+      +'<Cell ss:StyleID="r'+s+'"><Data ss:Type="String">'+esc(l.origem)+'</Data></Cell>'
+      +'<Cell ss:StyleID="val'+s+'"><Data ss:Type="Number">'+(l.valor||0)+'</Data></Cell>'
+      +'<Cell ss:StyleID="sc'+((l.score||0)>=70?'H':(l.score||0)>=40?'M':'L')+'"><Data ss:Type="Number">'+(l.score||0)+'</Data></Cell>'
+      +'<Cell ss:StyleID="r'+s+'"><Data ss:Type="String">'+esc(l.obs)+'</Data></Cell>'
+      +'</Row>';
   }).join('');
 
-  const resumoRows = Object.entries(statusCount).map(([st,cnt]) => {
-    const s = statusStyle[st]||'';
-    return `<tr>
-      <td style="${s};padding:6px 14px;border:1px solid #2A2A2E;text-align:center">${st}</td>
-      <td style="background:#1E1E24;color:#F0EDE6;font-weight:bold;padding:6px 14px;border:1px solid #2A2A2E;text-align:center">${cnt}</td>
-      <td style="background:#1E1E24;color:#F0EDE6;padding:6px 14px;border:1px solid #2A2A2E;text-align:center">${(cnt/total*100).toFixed(1)}%</td>
-    </tr>`;
+  const resumoRows = Object.entries(stCount).map(([st,cnt]) => {
+    const sid = stStyleId[st]||'foot';
+    return '<Row ss:Height="20">'
+      +'<Cell ss:StyleID="'+sid+'"><Data ss:Type="String">'+esc(st)+'</Data></Cell>'
+      +'<Cell ss:StyleID="foot"><Data ss:Type="Number">'+cnt+'</Data></Cell>'
+      +'<Cell ss:StyleID="foot"><Data ss:Type="String">'+(cnt/total*100).toFixed(1)+'%</Data></Cell>'
+      +'</Row>';
   }).join('');
 
-  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
-    xmlns:x="urn:schemas-microsoft-com:office:excel"
-    xmlns="http://www.w3.org/TR/REC-html40">
-  <head><meta charset="UTF-8">
-  <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets>
-    <x:ExcelWorksheet><x:Name>Leads</x:Name><x:WorksheetOptions><x:Selected/></x:WorksheetOptions></x:ExcelWorksheet>
-    <x:ExcelWorksheet><x:Name>Resumo</x:Name><x:WorksheetOptions/></x:ExcelWorksheet>
-  </x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
-  <style>
-    body { font-family: Arial, sans-serif; font-size: 9pt; }
-    table { border-collapse: collapse; }
-    td, th { font-size: 9pt; }
-  </style>
-  </head><body>
+  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    +'<?mso-application progid="Excel.Sheet"?>\n'
+    +'<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" '
+    +'xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" '
+    +'xmlns:x="urn:schemas-microsoft-com:office:excel">\n'
+    +'<Styles>\n'
+    +mkStyle('title','#E8C97A','#111113',14,1)
+    +mkStyle('sub','#6B6760','#111113',9,0,1)
+    +mkStyle('header','#FFFFFF','#8B6914',10,1,0,'Center')
+    +mkStyle('r0','#F0EDE6','#1E1E24',9)
+    +mkStyle('r1','#F0EDE6','#16161A',9)
+    +mkStyle('r0b','#F0EDE6','#1E1E24',9,1)
+    +mkStyle('r1b','#F0EDE6','#16161A',9,1)
+    +mkStyle('val0','#E8C97A','#1E1E24',9,1,0,'Right','R$ #,##0')
+    +mkStyle('val1','#E8C97A','#16161A',9,1,0,'Right','R$ #,##0')
+    +mkStyle('scH','#4CAF7A','#1E1E24',9,1,0,'Center')
+    +mkStyle('scM','#E8A94C','#1E1E24',9,1,0,'Center')
+    +mkStyle('scL','#E05555','#1E1E24',9,1,0,'Center')
+    +mkStyle('stNovo','#5B8DEF','#1C2E4A',9,1,0,'Center')
+    +mkStyle('stCont','#E8A94C','#2E2210',9,1,0,'Center')
+    +mkStyle('stNeg','#C9A84C','#2A2010',9,1,0,'Center')
+    +mkStyle('stConv','#4CAF7A','#0F2A1A',9,1,0,'Center')
+    +mkStyle('stPerd','#E05555','#2A1010',9,1,0,'Center')
+    +mkStyle('foot','#E8C97A','#8B6914',9,1,0,'Center')
+    +mkStyle('footval','#E8C97A','#8B6914',9,1,0,'Right','R$ #,##0')
+    +'</Styles>\n'
 
-  <!-- ABA LEADS -->
-  <table style="width:100%;border-collapse:collapse" x:str>
-    <tr><td colspan="12" style="background:#111113;color:#E8C97A;font-size:15pt;font-weight:bold;padding:10px 14px;border:none">
-      MedLeads — Relatório de Leads
-    </td></tr>
-    <tr><td colspan="12" style="background:#111113;color:#A8A49C;font-size:8pt;font-style:italic;padding:4px 14px;border:none">
-      ISA Digital — Instituto Saber e Aprender  |  Exportado em ${hoje}
-    </td></tr>
-    <tr><td colspan="12" style="background:#111113;padding:3px;border:none"></td></tr>
-    <tr>
-      <th style="background:#8B6914;color:#fff;padding:8px 10px;border:1px solid #2A2A2E;text-align:center">Nome</th>
-      <th style="background:#8B6914;color:#fff;padding:8px 10px;border:1px solid #2A2A2E;text-align:center">CRM</th>
-      <th style="background:#8B6914;color:#fff;padding:8px 10px;border:1px solid #2A2A2E;text-align:center">E-mail</th>
-      <th style="background:#8B6914;color:#fff;padding:8px 10px;border:1px solid #2A2A2E;text-align:center">WhatsApp</th>
-      <th style="background:#8B6914;color:#fff;padding:8px 10px;border:1px solid #2A2A2E;text-align:center">Especialidade</th>
-      <th style="background:#8B6914;color:#fff;padding:8px 10px;border:1px solid #2A2A2E;text-align:center">Cidade</th>
-      <th style="background:#8B6914;color:#fff;padding:8px 10px;border:1px solid #2A2A2E;text-align:center">Curso de Interesse</th>
-      <th style="background:#8B6914;color:#fff;padding:8px 10px;border:1px solid #2A2A2E;text-align:center">Status</th>
-      <th style="background:#8B6914;color:#fff;padding:8px 10px;border:1px solid #2A2A2E;text-align:center">Origem</th>
-      <th style="background:#8B6914;color:#fff;padding:8px 10px;border:1px solid #2A2A2E;text-align:center">Valor (R$)</th>
-      <th style="background:#8B6914;color:#fff;padding:8px 10px;border:1px solid #2A2A2E;text-align:center">Score</th>
-      <th style="background:#8B6914;color:#fff;padding:8px 10px;border:1px solid #2A2A2E;text-align:center">Observações</th>
-    </tr>
-    ${rowsHTML}
-    <tr>
-      <td style="background:#8B6914;color:#fff;font-weight:bold;padding:6px 10px;border:1px solid #2A2A2E">TOTAL / MÉDIAS</td>
-      <td colspan="8" style="background:#8B6914;border:1px solid #2A2A2E"></td>
-      <td style="background:#8B6914;color:#E8C97A;font-weight:bold;padding:6px 10px;border:1px solid #2A2A2E;text-align:right">R$ ${receita.toLocaleString('pt-BR')}</td>
-      <td style="background:#8B6914;color:#E8C97A;font-weight:bold;padding:6px 10px;border:1px solid #2A2A2E;text-align:center">${scoreMedia}</td>
-      <td style="background:#8B6914;border:1px solid #2A2A2E"></td>
-    </tr>
-  </table>
+    // ABA LEADS
+    +'<Worksheet ss:Name="Leads"><Table>\n'
+    +'<Column ss:Width="140"/><Column ss:Width="75"/><Column ss:Width="155"/>'
+    +'<Column ss:Width="90"/><Column ss:Width="100"/><Column ss:Width="110"/>'
+    +'<Column ss:Width="130"/><Column ss:Width="72"/><Column ss:Width="90"/>'
+    +'<Column ss:Width="68"/><Column ss:Width="42"/><Column ss:Width="180"/>\n'
+    +'<Row ss:Height="34"><Cell ss:MergeAcross="11" ss:StyleID="title"><Data ss:Type="String">MedLeads — Relatório de Leads</Data></Cell></Row>\n'
+    +'<Row ss:Height="16"><Cell ss:MergeAcross="11" ss:StyleID="sub"><Data ss:Type="String">ISA Digital — Instituto Saber e Aprender  |  Exportado em '+hoje+'</Data></Cell></Row>\n'
+    +'<Row ss:Height="28">'+headerCols.map(h=>'<Cell ss:StyleID="header"><Data ss:Type="String">'+h+'</Data></Cell>').join('')+'</Row>\n'
+    +dataRows
+    +'<Row ss:Height="22">'
+    +'<Cell ss:StyleID="foot"><Data ss:Type="String">TOTAL / MÉDIAS</Data></Cell>'
+    +'<Cell ss:StyleID="foot"><Data ss:Type="String"></Data></Cell>'
+    +'<Cell ss:StyleID="foot"><Data ss:Type="String"></Data></Cell>'
+    +'<Cell ss:StyleID="foot"><Data ss:Type="String"></Data></Cell>'
+    +'<Cell ss:StyleID="foot"><Data ss:Type="String"></Data></Cell>'
+    +'<Cell ss:StyleID="foot"><Data ss:Type="String"></Data></Cell>'
+    +'<Cell ss:StyleID="foot"><Data ss:Type="String"></Data></Cell>'
+    +'<Cell ss:StyleID="foot"><Data ss:Type="String"></Data></Cell>'
+    +'<Cell ss:StyleID="foot"><Data ss:Type="String"></Data></Cell>'
+    +'<Cell ss:StyleID="footval"><Data ss:Type="Number">'+receita+'</Data></Cell>'
+    +'<Cell ss:StyleID="foot"><Data ss:Type="Number">'+scoreMedia+'</Data></Cell>'
+    +'<Cell ss:StyleID="foot"><Data ss:Type="String"></Data></Cell>'
+    +'</Row>\n'
+    +'</Table></Worksheet>\n'
 
-  <!-- QUEBRA DE PÁGINA / ABA RESUMO -->
-  <br><table style="width:300px;border-collapse:collapse;margin-top:20px" x:str>
-    <tr><td colspan="3" style="background:#111113;color:#E8C97A;font-size:13pt;font-weight:bold;padding:8px 12px;border:none">
-      Resumo por Status
-    </td></tr>
-    <tr><td colspan="3" style="background:#111113;padding:3px;border:none"></td></tr>
-    <tr>
-      <th style="background:#8B6914;color:#fff;padding:7px 14px;border:1px solid #2A2A2E;text-align:center">Status</th>
-      <th style="background:#8B6914;color:#fff;padding:7px 14px;border:1px solid #2A2A2E;text-align:center">Qtd. Leads</th>
-      <th style="background:#8B6914;color:#fff;padding:7px 14px;border:1px solid #2A2A2E;text-align:center">% do Total</th>
-    </tr>
-    ${resumoRows}
-    <tr>
-      <td style="background:#8B6914;color:#E8C97A;font-weight:bold;padding:6px 14px;border:1px solid #2A2A2E;text-align:center">TOTAL</td>
-      <td style="background:#8B6914;color:#E8C97A;font-weight:bold;padding:6px 14px;border:1px solid #2A2A2E;text-align:center">${total}</td>
-      <td style="background:#8B6914;color:#E8C97A;font-weight:bold;padding:6px 14px;border:1px solid #2A2A2E;text-align:center">100%</td>
-    </tr>
-  </table>
+    // ABA RESUMO
+    +'<Worksheet ss:Name="Resumo"><Table>\n'
+    +'<Column ss:Width="100"/><Column ss:Width="80"/><Column ss:Width="80"/>\n'
+    +'<Row ss:Height="30"><Cell ss:MergeAcross="2" ss:StyleID="title"><Data ss:Type="String">Resumo por Status</Data></Cell></Row>\n'
+    +'<Row ss:Height="24">'+['Status','Qtd. Leads','% do Total'].map(h=>'<Cell ss:StyleID="header"><Data ss:Type="String">'+h+'</Data></Cell>').join('')+'</Row>\n'
+    +resumoRows
+    +'<Row ss:Height="22">'
+    +'<Cell ss:StyleID="foot"><Data ss:Type="String">TOTAL</Data></Cell>'
+    +'<Cell ss:StyleID="foot"><Data ss:Type="Number">'+total+'</Data></Cell>'
+    +'<Cell ss:StyleID="foot"><Data ss:Type="String">100%</Data></Cell>'
+    +'</Row>\n'
+    +'</Table></Worksheet>\n'
+    +'</Workbook>';
 
-  </body></html>`;
-
-  const blob = new Blob([html], {type: 'application/vnd.ms-excel;charset=utf-8'});
+  const blob = new Blob([xml], {type:'application/vnd.ms-excel;charset=utf-8'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
-  const date = new Date().toISOString().slice(0,10);
-  a.href = url; a.download = 'MedLeads_' + date + '.xls';
-  a.click(); URL.revokeObjectURL(url);
-  showToast('Excel exportado com formatação!', 'success');
+  a.href = url;
+  a.download = 'MedLeads_' + new Date().toISOString().slice(0,10) + '.xls';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Excel exportado com sucesso!', 'success');
+};
+
+function mkStyle(id, fg, bg, sz, bold, italic, align, numFmt) {
+  let s = '<Style ss:ID="'+id+'">'
+    +'<Font ss:Color="'+fg+'" ss:Size="'+(sz||9)+'"'+(bold?' ss:Bold="1"':'')+(italic?' ss:Italic="1"':'')+'/>  '
+    +'<Interior ss:Color="'+bg+'" ss:Pattern="Solid"/>';
+  if (align||numFmt) {
+    if (align) s += '<Alignment ss:Horizontal="'+align+'" ss:Vertical="Center"/>';
+    if (numFmt) s += '<NumberFormat ss:Format="'+numFmt+'"/>';
+  }
+  s += '<Borders>'
+    +'<Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#2A2A2E"/>'
+    +'<Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#2A2A2E"/>'
+    +'<Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#2A2A2E"/>'
+    +'<Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#2A2A2E"/>'
+    +'</Borders></Style>';
+  return s;
 }
 
 // ═══════════════════════════════════════════════

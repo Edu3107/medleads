@@ -1312,19 +1312,102 @@ tbody tr:hover { background: var(--bg3); }
    RESPONSIVE
 ══════════════════════════════════════ */
 @media (max-width: 900px) {
-  .sidebar { transform: translateX(-100%); }
+  .sidebar {
+    transform: translateX(-100%);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+  }
   .sidebar.open { transform: translateX(0); }
   .main-content { margin-left: 0; }
   .metrics-grid { grid-template-columns: 1fr 1fr; }
   .dashboard-grid { grid-template-columns: 1fr; }
   .reports-grid { grid-template-columns: 1fr; }
+  .topbar { padding: 0 16px; }
+  .topbar-title { font-size: 17px; }
+  .page-content { padding: 16px; }
+  /* Ocultar texto dos botões da topbar em tablet */
+  .btn-outline span.btn-txt { display: none; }
 }
 
 @media (max-width: 600px) {
-  .metrics-grid { grid-template-columns: 1fr; }
+  .metrics-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .metric-card { padding: 16px; }
+  .metric-value { font-size: 26px; }
   .form-row { grid-template-columns: 1fr; }
-  .page-content { padding: 16px; }
+  .page-content { padding: 12px; }
+  .topbar { height: 54px; padding: 0 12px; gap: 8px; }
+  .topbar-title { font-size: 15px; }
+
+  /* Tabela de leads vira cards no mobile */
+  .leads-table-wrap table thead { display: none; }
+  .leads-table-wrap table, 
+  .leads-table-wrap tbody,
+  .leads-table-wrap tr { display: block; width: 100%; }
+  .leads-table-wrap tr {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    padding: 14px;
+    cursor: pointer;
+  }
+  .leads-table-wrap tr:hover { background: var(--bg3); }
+  .leads-table-wrap td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border: none;
+    font-size: 13px;
+  }
+  .leads-table-wrap td::before {
+    content: attr(data-label);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text3);
+    flex-shrink: 0;
+    margin-right: 8px;
+  }
+  .leads-table-wrap td:first-child { border-bottom: 1px solid var(--border2); padding-bottom: 10px; margin-bottom: 6px; }
+  .leads-table-wrap td:last-child { display: none; } /* oculta coluna ações */
+  .lead-name-cell { flex-direction: column; align-items: flex-start; gap: 2px; }
+
+  /* Kanban scroll horizontal */
+  .kanban-board { gap: 12px; }
+  .kanban-col { flex: 0 0 220px; }
+
+  /* Modal full screen no mobile */
+  .modal { width: 100%; max-height: 100vh; border-radius: 0; margin: 0; }
+  .modal-overlay { padding: 0; align-items: flex-end; }
+
+  /* Drawer full screen */
+  .drawer { width: 100%; }
+
+  /* Dashboard grid */
+  .dashboard-grid { gap: 12px; }
+  .card-body { padding: 14px; }
+
+  /* Botões topbar compactos */
+  .btn-action, .btn-outline {
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+
+  /* Métricas compactas */
+  .metric-sub { display: none; }
+  .metric-label { font-size: 10px; }
 }
+
+/* Overlay para fechar sidebar no mobile */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 99;
+}
+.sidebar-overlay.open { display: block; }
 
 /* TOAST */
 .toast {
@@ -1870,7 +1953,7 @@ tbody tr:hover { background: var(--bg3); }
               <th>Ações</th>
             </tr>
           </thead>
-          <tbody id="leadsTableBody"></tbody>
+      <tbody id="leadsTableBody"></tbody>
         </table>
         <div class="pagination">
           <span id="paginationInfo"></span>
@@ -2212,9 +2295,15 @@ tbody tr:hover { background: var(--bg3); }
     </div>
   </div>
 
-  <div style="margin-top:20px;display:flex;gap:8px">
-    <button class="btn-action" style="flex:1" onclick="editCurrentLead()">✏️ Editar</button>
-    <button class="btn-outline" style="flex:1;justify-content:center" onclick="deleteCurrentLead()">🗑️ Excluir</button>
+  <div style="margin-top:16px">
+    <button class="btn-whatsapp" onclick="openWhatsApp()" style="width:100%;background:linear-gradient(135deg,#1a8a3a,#25D366);border:none;border-radius:10px;padding:12px;color:#fff;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s;margin-bottom:10px" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      Enviar WhatsApp
+    </button>
+    <div style="display:flex;gap:8px">
+      <button class="btn-action" style="flex:1" onclick="editCurrentLead()">✏️ Editar</button>
+      <button class="btn-outline" style="flex:1;justify-content:center" onclick="deleteCurrentLead()">🗑️ Excluir</button>
+    </div>
   </div>
 </div>
 
@@ -2513,9 +2602,15 @@ window.navigate = function(page) {
 };
 
 window.toggleSidebar = function(force) {
-  const sb = document.getElementById('sidebar');
-  if (force === false) sb.classList.remove('open');
-  else sb.classList.toggle('open');
+  const sb  = document.getElementById('sidebar');
+  const ovl = document.getElementById('sidebarOverlay');
+  if (force === false) {
+    sb.classList.remove('open');
+    if (ovl) ovl.classList.remove('open');
+  } else {
+    sb.classList.toggle('open');
+    if (ovl) ovl.classList.toggle('open');
+  }
 };
 
 // ═══════════════════════════════════════════════
@@ -2662,13 +2757,13 @@ function renderLeadsTable() {
           </div>
         </div>
       </td>
-      <td><span class="status-badge ${statusClass[l.status]||''}">${l.status}</span></td>
-      <td style="color:var(--text)">${l.curso||'—'}</td>
-      <td>
+      <td data-label="Status"><span class="status-badge ${statusClass[l.status]||''}">${l.status}</span></td>
+      <td data-label="Curso" style="color:var(--text)">${l.curso||'—'}</td>
+      <td data-label="Score">
         <div style="font-size:12px;color:var(--text);font-weight:600">${l.score||0}/100</div>
         <div class="score-bar-wrap"><div class="score-bar-fill" style="width:${l.score||0}%"></div></div>
       </td>
-      <td>${l.contato||'—'}</td>
+      <td data-label="Contato">${l.contato||'—'}</td>
       <td>
         <div class="action-btns">
           <button class="btn-icon" onclick="event.stopPropagation();openDrawer(${l.id})" title="Ver detalhes">👁</button>
@@ -2981,6 +3076,60 @@ window.deleteCurrentLead = function() {
   closeDrawer();
 };
 
+
+
+// ═══════════════════════════════════════════════
+//  WHATSAPP
+// ═══════════════════════════════════════════════
+window.openWhatsApp = function() {
+  const id = currentDrawerLeadId;
+  if (!id) return;
+  const l = leads.find(x => x.id === id);
+  if (!l) return;
+
+  if (!l.whats) {
+    showToast('Este lead não tem WhatsApp cadastrado.', 'error');
+    return;
+  }
+
+  // Limpar número (só dígitos)
+  const num = l.whats.replace(/\D/g, '');
+  const numBR = num.startsWith('55') ? num : '55' + num;
+
+  // Montar mensagem personalizada
+  const nome     = l.nome.split(' ').slice(0,2).join(' ');
+  const titulo   = l.nome.startsWith('Dra') ? 'Dra' : 'Dr';
+  const primeiro = l.nome.replace(/^Dr[a]?\.?\s*/i, '').split(' ')[0];
+  const curso    = l.curso || 'nossos cursos';
+  const status   = l.status;
+
+  let msg = '';
+
+  if (status === 'Novo') {
+    msg = `Olá ${titulo}. ${primeiro}! Tudo bem? 😊\n\nSou da equipe ISA Digital e vi que você demonstrou interesse no curso de *${curso}*.\n\nPosso te passar mais detalhes sobre o conteúdo e as próximas turmas?`;
+  } else if (status === 'Contato') {
+    msg = `Olá ${titulo}. ${primeiro}, tudo bem?\n\nEstou entrando em contato para dar continuidade à nossa conversa sobre o curso de *${curso}*.\n\nPosso esclarecer alguma dúvida ou te enviar mais informações?`;
+  } else if (status === 'Negociando') {
+    msg = `Olá ${titulo}. ${primeiro}! 👋\n\nPassando para saber se você teve a oportunidade de pensar na proposta do curso de *${curso}*.\n\nFicamos à disposição para ajudar com qualquer dúvida antes da sua decisão! 🎓`;
+  } else if (status === 'Perdido') {
+    msg = `Olá ${titulo}. ${primeiro}, tudo bem?\n\nSei que no momento o curso de *${curso}* não foi a melhor opção, mas gostaríamos de te convidar a conhecer nossas novas turmas e condições especiais.\n\nPodemos conversar rapidinho?`;
+  } else {
+    msg = `Olá ${titulo}. ${primeiro}! Tudo bem?\n\nSou da equipe ISA Digital. Entrando em contato sobre o curso de *${curso}*.\n\nPodemos conversar?`;
+  }
+
+  const url = `https://wa.me/${numBR}?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+
+  // Registrar no histórico
+  const idx = leads.findIndex(x => x.id === id);
+  if (idx >= 0) {
+    if (!leads[idx].hist) leads[idx].hist = [];
+    leads[idx].hist.unshift({ emoji:'💬', acao:'WhatsApp enviado', quando:'Agora' });
+    leads[idx].contato = 'Hoje';
+    saveLeads();
+    openDrawer(id);
+  }
+};
 
 // ═══════════════════════════════════════════════
 //  EXPORTAR CSV

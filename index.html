@@ -1866,7 +1866,7 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
 
       <div class="nav-section-label">Cursos</div>
       <button class="nav-item" onclick="navigate('cursos')">
-        <span class="nav-icon">🎓</span> Produtos ISA
+        <span class="nav-icon">🎓</span> Cursos ISA
       </button>
     </nav>
 
@@ -1900,27 +1900,22 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
     <section class="page-content active" id="page-dashboard">
       <!-- META DE VENDAS -->
       <div class="meta-card" id="metaCard">
-        <div class="meta-inner">
-          <div class="meta-icon-wrap">🎯</div>
-          <div class="meta-info">
-            <div class="meta-header">
-              <span class="meta-title">Meta Mensal de Vendas</span>
-              <button class="meta-edit-btn" onclick="editMeta()">✏️ Ajustar meta</button>
-            </div>
-            <div class="meta-valores">
-              <span class="meta-atual" id="metaAtual">R$ 0</span>
-              <span class="meta-total-val" id="metaTotalVal">/ R$ 10.000</span>
-              <span class="meta-pct low" id="metaPct">0%</span>
-            </div>
-            <div class="meta-bar-track">
-              <div class="meta-bar-fill" id="metaBarFill" style="width:0%"></div>
-            </div>
-            <div class="meta-sub-info">
-              <span class="meta-sub-item">Convertidos: <strong id="metaConvCount">0</strong></span>
-              <span class="meta-sub-item">Faltam: <strong id="metaFaltam">—</strong></span>
-              <span class="meta-sub-item" id="metaStatus"></span>
-            </div>
-          </div>
+        <div class="meta-top">
+          <span class="meta-label">Meta Mensal de Vendas</span>
+          <button class="meta-edit-btn" onclick="editMeta()">✏ Ajustar</button>
+        </div>
+        <div class="meta-numbers">
+          <span class="meta-atual" id="metaAtual">R$ 0</span>
+          <span class="meta-de" id="metaTotalVal">/ R$ 10.000</span>
+          <span class="meta-pct low" id="metaPct">0%</span>
+        </div>
+        <div class="meta-bar-track">
+          <div class="meta-bar-fill" id="metaBarFill" style="width:0%"></div>
+        </div>
+        <div class="meta-footer">
+          <span class="meta-stat">Convertidos: <strong id="metaConvCount">0</strong></span>
+          <span class="meta-stat">Faltam: <strong id="metaFaltam">—</strong></span>
+          <span class="meta-stat" id="metaStatus"></span>
         </div>
       </div>
       <div class="metrics-grid">
@@ -2612,11 +2607,62 @@ function showPanel(panel) {
 //  DATA
 // ═══════════════════════════════════════════════
 const CURSOS = [
-  { nome: 'Ecocardiograma Básico', preco: 'R$ 1.990', modalidade: 'Online ao Vivo', vagas: 40, desc: 'Fundamentos da ecocardiografia para médicos iniciantes. Teoria + prática com casos reais.', cor: '#C9A84C', icon: '🫀' },
-  { nome: 'Ecocardiograma Avançado', preco: 'R$ 2.990', modalidade: 'Online ao Vivo', vagas: 30, desc: 'Ecocardiografia avançada: protocolos, disfunções e síndromes complexas.', cor: '#5B8DEF', icon: '🔬' },
-  { nome: 'Doppler Tecidual', preco: 'R$ 1.490', modalidade: 'Online', vagas: 50, desc: 'Técnicas de Doppler tecidual, strain e análise funcional miocárdica.', cor: '#4CAF7A', icon: '📡' },
-  { nome: 'Ecocardiograma Fetal', preco: 'R$ 2.490', modalidade: 'Presencial + Online', vagas: 20, desc: 'Ecocardiografia fetal: diagnóstico de cardiopatias congênitas in utero.', cor: '#E8A94C', icon: '👶' },
-  { nome: 'Ecocardiograma 3D', preco: 'R$ 3.490', modalidade: 'Presencial', vagas: 15, desc: 'Ecocardiografia tridimensional: reconstrução e análise volumétrica cardíaca.', cor: '#9B59B6', icon: '🧊' },
+  {
+    nome: 'Curso Preparatório para a Prova de Título de Ecocardiografia 2026',
+    preco: 'Consulte',
+    modalidade: 'Online',
+    desc: 'Preparação completa para a prova de título de ecocardiografia. Teoria atualizada, resolução de provas anteriores e simulados.',
+    cor: '#C9A84C', icon: '🏆',
+    url: 'https://isadigital.com.br/curso/curso-preparatorio-para-a-prova-de-titulo-de-ecocardiografia-2026/'
+  },
+  {
+    nome: 'Ecocardiografia nas Valvopatias de Ponta a Ponta',
+    preco: 'Consulte',
+    modalidade: 'Online',
+    desc: 'Curso completo sobre avaliação ecocardiográfica das valvopatias, do básico ao avançado, com casos clínicos reais.',
+    cor: '#5B8DEF', icon: '🫀',
+    url: 'https://isadigital.com.br/curso/curso-de-ecocardiografia-nas-valvopatias/'
+  },
+  {
+    nome: 'Assinatura Ecoinsights',
+    preco: 'Assinatura',
+    modalidade: 'Online',
+    desc: 'Acesso contínuo a conteúdos exclusivos, casos clínicos, atualizações e insights em ecocardiografia.',
+    cor: '#4CAF7A', icon: '📡',
+    url: 'https://isadigital.com.br/curso/assinatura-ecoinsights/'
+  },
+  {
+    nome: 'Eco Estresse Elite',
+    preco: 'Consulte',
+    modalidade: 'Online',
+    desc: 'Ecocardiografia sob estresse: técnicas, protocolos e interpretação avançada para diagnóstico de isquemia e valvopatias.',
+    cor: '#E8A94C', icon: '⚡',
+    url: 'https://isadigital.com.br/curso/eco-estresse-elite/'
+  },
+  {
+    nome: 'EcoVision Training – Imersão Presencial em Ecocardiografia Prática',
+    preco: 'Consulte',
+    modalidade: 'Presencial',
+    desc: 'Imersão presencial intensiva com prática hands-on em equipamentos de última geração e casos reais de pacientes.',
+    cor: '#9B59B6', icon: '🔬',
+    url: 'https://isadigital.com.br/curso/ecovision-training-imersao-presencial-em-ecocardiografia-pratica/'
+  },
+  {
+    nome: 'Bastidores da Prova de Título',
+    preco: 'Consulte',
+    modalidade: 'Online',
+    desc: 'Estratégias exclusivas, dicas e segredos para aprovação na prova de título de ecocardiografia com a Dra. Ana Camarozano.',
+    cor: '#E05555', icon: '🎯',
+    url: 'https://isadigital.com.br/curso/bastidores-da-prova-de-titulo/'
+  },
+  {
+    nome: 'Mentoria Individualizada com a Dra. Ana Camarozano',
+    preco: 'Consulte',
+    modalidade: 'Online',
+    desc: 'Mentoria personalizada com a Dra. Ana Camarozano para acelerar seu desenvolvimento em ecocardiografia.',
+    cor: '#D4A843', icon: '👩‍⚕️',
+    url: 'https://isadigital.com.br/curso/mentoria-individualizada-com-a-dra-ana-camarozano/'
+  },
 ];
 
 const SAMPLE_LEADS = [
@@ -3000,20 +3046,22 @@ function renderRelatorios() {
 // ═══════════════════════════════════════════════
 function renderCursos() {
   document.getElementById('cursosGrid').innerHTML = CURSOS.map(c => `
-    <div style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);overflow:hidden;transition:border-color 0.2s,box-shadow 0.2s" onmouseover="this.style.borderColor='var(--border)';this.style.boxShadow='var(--shadow-gold)'" onmouseout="this.style.borderColor='var(--border2)';this.style.boxShadow='none'">
-      <div style="height:6px;background:${c.cor}"></div>
+    <div onclick="window.open('${c.url}','_blank')" style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);overflow:hidden;transition:border-color 0.2s,box-shadow 0.2s,transform 0.15s;cursor:pointer"
+      onmouseover="this.style.borderColor='${c.cor}';this.style.boxShadow='0 0 0 1px ${c.cor}40,var(--shadow-gold)';this.style.transform='translateY(-2px)'"
+      onmouseout="this.style.borderColor='var(--border2)';this.style.boxShadow='none';this.style.transform='translateY(0)'">
+      <div style="height:4px;background:${c.cor}"></div>
       <div style="padding:22px">
-        <div style="font-size:28px;margin-bottom:10px">${c.icon}</div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--text);margin-bottom:6px">${c.nome}</div>
-        <div style="font-size:12px;color:var(--text3);margin-bottom:12px">${c.desc}</div>
-        <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border2);padding-top:14px;margin-top:14px">
-          <div>
-            <div style="font-size:20px;font-weight:700;color:${c.cor}">${c.preco}</div>
-            <div style="font-size:11px;color:var(--text3)">${c.modalidade}</div>
-          </div>
-          <div style="text-align:right">
-            <div style="font-size:13px;font-weight:600;color:var(--text)">${c.vagas} vagas</div>
-            <div style="font-size:11px;color:var(--text3)">disponíveis</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:28px">${c.icon}</div>
+          <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:${c.cor};background:${c.cor}18;padding:4px 10px;border-radius:20px">${c.modalidade}</div>
+        </div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--text);margin-bottom:8px;line-height:1.3">${c.nome}</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.6">${c.desc}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border2);padding-top:14px">
+          <div style="font-size:14px;font-weight:700;color:${c.cor}">${c.preco}</div>
+          <div style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:4px">
+            Ver curso
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </div>
         </div>
       </div>

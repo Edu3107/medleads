@@ -1501,6 +1501,8 @@ tbody tr:hover { background: var(--bg3); }
 .empty-state p { font-size: 14px; }
 
 </style>
+<script src="https://apis.google.com/js/api.js" defer></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -2114,24 +2116,6 @@ tbody tr:hover { background: var(--bg3); }
 </div>
 
 
-<!-- GOOGLE SHEETS MODAL -->
-<div class="sheets-modal" id="sheetsModal">
-  <div class="sheets-box">
-    <h3>📊 Exportar para Google Sheets</h3>
-    <p>Seus leads serão enviados para uma planilha nova no seu Google Drive, com todos os dados atuais.</p>
-    <div class="sheets-status" id="sheetsStatus">
-      <span>Clique em "Conectar e Exportar" para começar.</span>
-    </div>
-    <div class="sheets-actions">
-      <button class="btn-outline" onclick="closeSheetsModal()">Cancelar</button>
-      <button class="btn-action" id="btnSheetsExport" onclick="exportToSheets()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        Conectar e Exportar
-      </button>
-    </div>
-  </div>
-</div>
-
 <!-- LEAD DETAIL DRAWER -->
 <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
 <div class="drawer" id="drawer">
@@ -2182,8 +2166,6 @@ tbody tr:hover { background: var(--bg3); }
 </div>
 
 <!-- FIREBASE compat SDKs -->
-<script src="https://apis.google.com/js/api.js"></script>
-<script src="https://accounts.google.com/gsi/client"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -3352,15 +3334,33 @@ window.exportToSheets = async function() {
 
 function getGoogleToken() {
   return new Promise((resolve, reject) => {
-    const client = google.accounts.oauth2.initTokenClient({
-      client_id: GSHEETS_CLIENT_ID,
-      scope: GSHEETS_SCOPES,
-      callback: (resp) => {
-        if (resp.error) reject(new Error(resp.error));
-        else resolve(resp.access_token);
-      }
-    });
-    client.requestAccessToken();
+    if (typeof google === 'undefined' || !google.accounts) {
+      reject(new Error('SDK do Google não carregou. Verifique sua conexão e recarregue a página.'));
+      return;
+    }
+    try {
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: GSHEETS_CLIENT_ID,
+        scope: GSHEETS_SCOPES,
+        callback: (resp) => {
+          if (resp.error) {
+            const msgs = {
+              'popup_closed_by_user': 'Login cancelado. Tente novamente.',
+              'access_denied': 'Acesso negado. Autorize o MedLeads no popup do Google.',
+            };
+            reject(new Error(msgs[resp.error] || resp.error));
+          } else {
+            resolve(resp.access_token);
+          }
+        },
+        error_callback: (err) => {
+          reject(new Error('Erro OAuth: ' + (err.message || err.type)));
+        }
+      });
+      client.requestAccessToken({ prompt: 'consent' });
+    } catch(e) {
+      reject(new Error('Erro ao iniciar login Google: ' + e.message));
+    }
   });
 }
 
@@ -3717,5 +3717,24 @@ function showToast(msg, type='success') {
   else initParticles();
 })();
 </script>
+
+
+<!-- GOOGLE SHEETS MODAL -->
+<div class="sheets-modal" id="sheetsModal">
+  <div class="sheets-box">
+    <h3>📊 Exportar para Google Sheets</h3>
+    <p>Seus leads serão enviados para uma planilha nova no seu Google Drive, com todos os dados atuais.</p>
+    <div class="sheets-status" id="sheetsStatus">
+      <span>Clique em "Conectar e Exportar" para começar.</span>
+    </div>
+    <div class="sheets-actions">
+      <button class="btn-outline" onclick="closeSheetsModal()">Cancelar</button>
+      <button class="btn-action" id="btnSheetsExport" onclick="exportToSheets()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Conectar e Exportar
+      </button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

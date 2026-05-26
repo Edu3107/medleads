@@ -1639,6 +1639,42 @@ tbody tr:hover { background: var(--bg3); }
 .sheets-status.success { border-color: rgba(76,175,122,.4); color: var(--success); }
 .sheets-status.error   { border-color: rgba(224,85,85,.4);  color: var(--danger);  }
 .sheets-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ── MODO CLARO ── */
+body.light-mode {
+  --bg: #F5F4F1; --bg2: #ECEAE4; --bg3: #E2DFD7; --bg4: #D8D4CA;
+  --surface: #FFFFFF; --surface2: #F5F4F1;
+  --border: rgba(139,105,20,0.25); --border2: rgba(0,0,0,0.10);
+  --text: #1A1814; --text2: #4A4640; --text3: #7A746C;
+  --gold-glow: rgba(201,168,76,0.12);
+  background: #F5F4F1; color: #1A1814;
+}
+body.light-mode .topbar { background: rgba(245,244,241,0.95); border-bottom-color: rgba(0,0,0,0.08); }
+body.light-mode .sidebar { background: #FFFFFF; border-right-color: rgba(0,0,0,0.08); }
+body.light-mode .main-content { background: #F5F4F1; }
+body.light-mode .metric-card,
+body.light-mode .card,
+body.light-mode .leads-table-wrap,
+body.light-mode .kanban-col,
+body.light-mode .modal,
+body.light-mode .meta-card,
+body.light-mode .advanced-filters,
+body.light-mode .report-card,
+body.light-mode .confirm-box,
+body.light-mode .sheets-box,
+body.light-mode .drawer { background: #FFFFFF; border-color: rgba(0,0,0,0.08); }
+body.light-mode .kanban-card { background: #F5F4F1; border-color: rgba(0,0,0,0.08); }
+body.light-mode thead tr { background: #F5F4F1; }
+body.light-mode td, body.light-mode th { border-color: rgba(0,0,0,0.06); }
+body.light-mode tbody tr:hover { background: #F0EDE6; }
+body.light-mode .nav-item:hover { background: #F0EDE6; }
+body.light-mode .filter-select,
+body.light-mode .search-input-wrap input,
+body.light-mode .adv-filter-group input,
+body.light-mode .adv-filter-group select { background: #F5F4F1; border-color: rgba(0,0,0,0.1); color: #1A1814; }
+body.light-mode .user-chip { background: #F0EDE6; }
+body.light-mode .drawer { border-left-color: rgba(0,0,0,0.08); }
+body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
 </style>
 <script src="https://apis.google.com/js/api.js" defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -3194,7 +3230,7 @@ window.toggleTheme = function() {
 function applyTheme() {
   document.body.classList.toggle('light-mode', _lightMode);
   const btn = document.getElementById('btnTheme');
-  if (btn) btn.textContent = _lightMode ? '🌙' : '☀️';
+  if (btn) btn.textContent = _lightMode ? '☀️' : '🌙';
 }
 
 // ═══════════════════════════════════════════════

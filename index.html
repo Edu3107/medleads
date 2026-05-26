@@ -1712,6 +1712,7 @@ tbody tr:hover { background: var(--bg3); }
       <button class="hamburger" onclick="toggleSidebar()">☰</button>
       <div class="topbar-title" id="topbarTitle">Dashboard</div>
       <div class="topbar-actions">
+        <button class="btn-outline" onclick="openSheetsModal()" title="Exportar para Google Sheets">📊 Sheets</button>
         <button class="btn-outline" onclick="exportXLSX()" title="Exportar Excel">⬇ Excel</button>
         <button class="btn-action" onclick="openModal()">＋ Novo Lead</button>
       </div>
@@ -2112,6 +2113,25 @@ tbody tr:hover { background: var(--bg3); }
   </div>
 </div>
 
+
+<!-- GOOGLE SHEETS MODAL -->
+<div class="sheets-modal" id="sheetsModal">
+  <div class="sheets-box">
+    <h3>📊 Exportar para Google Sheets</h3>
+    <p>Seus leads serão enviados para uma planilha nova no seu Google Drive, com todos os dados atuais.</p>
+    <div class="sheets-status" id="sheetsStatus">
+      <span>Clique em "Conectar e Exportar" para começar.</span>
+    </div>
+    <div class="sheets-actions">
+      <button class="btn-outline" onclick="closeSheetsModal()">Cancelar</button>
+      <button class="btn-action" id="btnSheetsExport" onclick="exportToSheets()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Conectar e Exportar
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- LEAD DETAIL DRAWER -->
 <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
 <div class="drawer" id="drawer">
@@ -2162,6 +2182,8 @@ tbody tr:hover { background: var(--bg3); }
 </div>
 
 <!-- FIREBASE compat SDKs -->
+<script src="https://apis.google.com/js/api.js"></script>
+<script src="https://accounts.google.com/gsi/client"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -3273,6 +3295,343 @@ function _showPerfilMsg(msg, type) {
   el.textContent = msg;
   el.style.display = 'block';
   el.style.color = type === 'success' ? 'var(--success)' : 'var(--danger)';
+}
+
+
+// ═══════════════════════════════════════════════
+//  GOOGLE SHEETS EXPORT
+// ═══════════════════════════════════════════════
+const GSHEETS_CLIENT_ID = '648048541810-h2de1ujp36tnl5ukdfue1lbthe54q3ls.apps.googleusercontent.com';
+const GSHEETS_SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
+let _gsAccessToken = null;
+
+window.openSheetsModal = function() {
+  document.getElementById('sheetsModal').classList.add('open');
+  setSheetsStatus('Clique em "Conectar e Exportar" para começar.', '');
+};
+
+window.closeSheetsModal = function() {
+  document.getElementById('sheetsModal').classList.remove('open');
+};
+
+function setSheetsStatus(msg, type) {
+  const el = document.getElementById('sheetsStatus');
+  el.textContent = msg;
+  el.className = 'sheets-status' + (type ? ' ' + type : '');
+}
+
+window.exportToSheets = async function() {
+  const btn = document.getElementById('btnSheetsExport');
+  btn.disabled = true; btn.style.opacity = '.6';
+  setSheetsStatus('🔐 Conectando com Google...', '');
+
+  try {
+    // Autenticar via Google Identity Services
+    _gsAccessToken = await getGoogleToken();
+    setSheetsStatus('📋 Criando planilha no Google Drive...', '');
+
+    // Criar a planilha
+    const sheetId = await createSpreadsheet();
+    setSheetsStatus('📝 Enviando ' + leads.length + ' leads...', '');
+
+    // Preencher com os dados
+    await populateSpreadsheet(sheetId);
+
+    const url = 'https://docs.google.com/spreadsheets/d/' + sheetId;
+    setSheetsStatus('✅ Planilha criada com sucesso! Abrindo...', 'success');
+    setTimeout(() => window.open(url, '_blank'), 1000);
+    showToast('Leads exportados para o Google Sheets!', 'success');
+
+  } catch(e) {
+    setSheetsStatus('❌ Erro: ' + e.message, 'error');
+    showToast('Erro ao exportar: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.style.opacity = '1';
+  }
+};
+
+function getGoogleToken() {
+  return new Promise((resolve, reject) => {
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: GSHEETS_CLIENT_ID,
+      scope: GSHEETS_SCOPES,
+      callback: (resp) => {
+        if (resp.error) reject(new Error(resp.error));
+        else resolve(resp.access_token);
+      }
+    });
+    client.requestAccessToken();
+  });
+}
+
+async function createSpreadsheet() {
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const res = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + _gsAccessToken,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      properties: { title: 'MedLeads — Leads ' + hoje },
+      sheets: [
+        { properties: { title: 'Leads', index: 0 } },
+        { properties: { title: 'Resumo', index: 1 } }
+      ]
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || 'Erro ao criar planilha');
+  return data.spreadsheetId;
+}
+
+async function populateSpreadsheet(sheetId) {
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const total = leads.length;
+  const receita = leads.filter(l=>l.status==='Convertido').reduce((s,l)=>s+(l.valor||0),0);
+  const scoreMedia = total>0 ? (leads.reduce((s,l)=>s+(l.score||0),0)/total).toFixed(1) : 0;
+
+  // Dados da aba Leads
+  const hdrs = ['Nome','CRM','E-mail','WhatsApp','Especialidade','Cidade',
+                'Curso de Interesse','Status','Origem','Valor (R$)','Score','Observações'];
+
+  const rows = leads.map(l => [
+    l.nome||'', l.crm||'', l.email||'', l.whats||'', l.spec||'', l.cidade||'',
+    l.curso||'', l.status||'', l.origem||'', l.valor||0, l.score||0, l.obs||''
+  ]);
+
+  // Contagem por status
+  const stCount = {};
+  leads.forEach(l => { stCount[l.status] = (stCount[l.status]||0)+1; });
+
+  const resumoRows = Object.entries(stCount).map(([st,cnt]) => [st, cnt, (cnt/total*100).toFixed(1)+'%']);
+
+  // Montar todos os valores de uma vez
+  const leadsValues = [
+    ['MedLeads — Relatório de Leads'],
+    ['ISA Digital — Instituto Saber e Aprender | Exportado em ' + hoje],
+    [],
+    hdrs,
+    ...rows,
+    ['TOTAL / MÉDIAS','','','','','','','','', receita, scoreMedia, '']
+  ];
+
+  const resumoValues = [
+    ['Resumo por Status'],
+    [],
+    ['Status','Qtd. Leads','% do Total'],
+    ...resumoRows,
+    ['TOTAL', total, '100%']
+  ];
+
+  // Enviar dados em batch
+  const batchRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchUpdate`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + _gsAccessToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        valueInputOption: 'USER_ENTERED',
+        data: [
+          { range: 'Leads!A1', values: leadsValues },
+          { range: 'Resumo!A1', values: resumoValues }
+        ]
+      })
+    }
+  );
+  if (!batchRes.ok) {
+    const err = await batchRes.json();
+    throw new Error(err.error?.message || 'Erro ao preencher planilha');
+  }
+
+  // Aplicar formatações via batchUpdate
+  await formatSpreadsheet(sheetId, total);
+}
+
+async function formatSpreadsheet(sheetId, totalLeads) {
+  // Obter IDs das abas
+  const infoRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}`,
+    { headers: { 'Authorization': 'Bearer ' + _gsAccessToken } }
+  );
+  const info = await infoRes.json();
+  const leadsSheetId  = info.sheets[0].properties.sheetId;
+  const resumoSheetId = info.sheets[1].properties.sheetId;
+
+  const gold     = { red:0.545, green:0.408, blue:0.078 };  // #8B6914
+  const goldLight= { red:0.910, green:0.788, blue:0.478 };  // #E8C97A
+  const bg1      = { red:0.118, green:0.118, blue:0.141 };  // #1E1E24
+  const bg2      = { red:0.086, green:0.086, blue:0.102 };  // #16161A
+  const bgDark   = { red:0.067, green:0.067, blue:0.075 };  // #111113
+  const white    = { red:0.941, green:0.929, blue:0.878 };  // #F0EDE6
+  const muted    = { red:0.659, green:0.643, blue:0.612 };  // #A8A49C
+  const green    = { red:0.298, green:0.686, blue:0.478 };  // #4CAF7A
+  const red      = { red:0.878, green:0.333, blue:0.333 };  // #E05555
+  const blue     = { red:0.357, green:0.553, blue:0.937 };  // #5B8DEF
+  const orange   = { red:0.910, green:0.663, blue:0.298 };  // #E8A94C
+  const goldc    = { red:0.788, green:0.659, blue:0.298 };  // #C9A84C
+
+  const stColors = {
+    'Novo':       { bg:{ red:0.110,green:0.180,blue:0.290 }, fg:blue },
+    'Contato':    { bg:{ red:0.180,green:0.133,blue:0.063 }, fg:orange },
+    'Negociando': { bg:{ red:0.165,green:0.125,blue:0.063 }, fg:goldc },
+    'Convertido': { bg:{ red:0.059,green:0.165,blue:0.102 }, fg:green },
+    'Perdido':    { bg:{ red:0.165,green:0.063,blue:0.063 }, fg:red },
+  };
+
+  function cellFmt(shId, r1, c1, r2, c2, props) {
+    return {
+      repeatCell: {
+        range: { sheetId:shId, startRowIndex:r1, endRowIndex:r2, startColumnIndex:c1, endColumnIndex:c2 },
+        cell: { userEnteredFormat: props },
+        fields: 'userEnteredFormat(' + Object.keys(props).join(',') + ')'
+      }
+    };
+  }
+
+  const requests = [
+    // Título linha 1
+    cellFmt(leadsSheetId,0,0,1,12,{
+      backgroundColor:bgDark,
+      textFormat:{bold:true,fontSize:14,foregroundColor:goldLight,fontFamily:'Arial'},
+      verticalAlignment:'MIDDLE'
+    }),
+    // Subtítulo linha 2
+    cellFmt(leadsSheetId,1,0,2,12,{
+      backgroundColor:bgDark,
+      textFormat:{italic:true,fontSize:9,foregroundColor:muted,fontFamily:'Arial'},
+      verticalAlignment:'MIDDLE'
+    }),
+    // Espaçador linha 3
+    cellFmt(leadsSheetId,2,0,3,12,{ backgroundColor:bgDark }),
+    // Cabeçalho linha 4
+    cellFmt(leadsSheetId,3,0,4,12,{
+      backgroundColor:gold,
+      textFormat:{bold:true,fontSize:10,foregroundColor:{red:1,green:1,blue:1},fontFamily:'Arial'},
+      horizontalAlignment:'CENTER',
+      verticalAlignment:'MIDDLE',
+      wrapStrategy:'WRAP'
+    }),
+    // Linha de totais
+    cellFmt(leadsSheetId,4+totalLeads,0,5+totalLeads,12,{
+      backgroundColor:gold,
+      textFormat:{bold:true,fontSize:9,foregroundColor:goldLight,fontFamily:'Arial'},
+      horizontalAlignment:'CENTER',
+      verticalAlignment:'MIDDLE'
+    }),
+  ];
+
+  // Linhas de dados alternadas
+  for (let i=0; i<totalLeads; i++) {
+    const bg = i%2===0 ? bg1 : bg2;
+    const row = 4+i;
+    requests.push(cellFmt(leadsSheetId,row,0,row+1,12,{
+      backgroundColor:bg,
+      textFormat:{fontSize:9,foregroundColor:white,fontFamily:'Arial'},
+      verticalAlignment:'MIDDLE'
+    }));
+    // Nome bold
+    requests.push(cellFmt(leadsSheetId,row,0,row+1,1,{
+      backgroundColor:bg,
+      textFormat:{bold:true,fontSize:9,foregroundColor:white,fontFamily:'Arial'},
+      verticalAlignment:'MIDDLE'
+    }));
+    // Valor dourado
+    requests.push(cellFmt(leadsSheetId,row,9,row+1,10,{
+      backgroundColor:bg,
+      textFormat:{bold:true,fontSize:9,foregroundColor:goldLight,fontFamily:'Arial'},
+      horizontalAlignment:'RIGHT',
+      verticalAlignment:'MIDDLE',
+      numberFormat:{type:'CURRENCY',pattern:'R$ #,##0'}
+    }));
+    // Score colorido
+    const sc = leads[i] ? (leads[i].score||0) : 0;
+    const scColor = sc>=70 ? green : sc>=40 ? orange : red;
+    requests.push(cellFmt(leadsSheetId,row,10,row+1,11,{
+      backgroundColor:bg,
+      textFormat:{bold:true,fontSize:9,foregroundColor:scColor,fontFamily:'Arial'},
+      horizontalAlignment:'CENTER',
+      verticalAlignment:'MIDDLE'
+    }));
+    // Status colorido
+    const st = leads[i]?.status;
+    if (st && stColors[st]) {
+      requests.push(cellFmt(leadsSheetId,row,7,row+1,8,{
+        backgroundColor:stColors[st].bg,
+        textFormat:{bold:true,fontSize:9,foregroundColor:stColors[st].fg,fontFamily:'Arial'},
+        horizontalAlignment:'CENTER',
+        verticalAlignment:'MIDDLE'
+      }));
+    }
+  }
+
+  // Larguras das colunas (em pixels)
+  const colWidths = [200,110,220,130,140,160,200,100,130,90,60,280];
+  colWidths.forEach((w,i) => {
+    requests.push({
+      updateDimensionProperties: {
+        range:{ sheetId:leadsSheetId, dimension:'COLUMNS', startIndex:i, endIndex:i+1 },
+        properties:{ pixelSize:w },
+        fields:'pixelSize'
+      }
+    });
+  });
+
+  // Altura das linhas
+  requests.push({ updateDimensionProperties:{ range:{sheetId:leadsSheetId,dimension:'ROWS',startIndex:0,endIndex:1}, properties:{pixelSize:40}, fields:'pixelSize' } });
+  requests.push({ updateDimensionProperties:{ range:{sheetId:leadsSheetId,dimension:'ROWS',startIndex:3,endIndex:4}, properties:{pixelSize:32}, fields:'pixelSize' } });
+
+  // Congelar linha do cabeçalho
+  requests.push({ updateSheetProperties:{ properties:{sheetId:leadsSheetId, gridProperties:{frozenRowCount:4}}, fields:'gridProperties.frozenRowCount' } });
+
+  // ── ABA RESUMO ──
+  requests.push(cellFmt(resumoSheetId,0,0,1,3,{
+    backgroundColor:bgDark,
+    textFormat:{bold:true,fontSize:13,foregroundColor:goldLight,fontFamily:'Arial'},
+    verticalAlignment:'MIDDLE'
+  }));
+  requests.push(cellFmt(resumoSheetId,2,0,3,3,{
+    backgroundColor:gold,
+    textFormat:{bold:true,fontSize:10,foregroundColor:{red:1,green:1,blue:1},fontFamily:'Arial'},
+    horizontalAlignment:'CENTER',verticalAlignment:'MIDDLE'
+  }));
+
+  const stList = Object.entries(stColors);
+  stList.forEach(([st,cols],i) => {
+    const row = 3+i;
+    requests.push(cellFmt(resumoSheetId,row,0,row+1,3,{
+      backgroundColor:cols.bg,
+      textFormat:{bold:true,fontSize:10,foregroundColor:cols.fg,fontFamily:'Arial'},
+      horizontalAlignment:'CENTER',verticalAlignment:'MIDDLE'
+    }));
+  });
+
+  const tr2 = 3+stList.length;
+  requests.push(cellFmt(resumoSheetId,tr2,0,tr2+1,3,{
+    backgroundColor:gold,
+    textFormat:{bold:true,fontSize:10,foregroundColor:goldLight,fontFamily:'Arial'},
+    horizontalAlignment:'CENTER',verticalAlignment:'MIDDLE'
+  }));
+
+  [0,1,2].forEach((i,_,arr) => {
+    requests.push({ updateDimensionProperties:{ range:{sheetId:resumoSheetId,dimension:'COLUMNS',startIndex:i,endIndex:i+1}, properties:{pixelSize:[130,100,100][i]}, fields:'pixelSize' } });
+  });
+
+  // Enviar todas as formatações
+  await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + _gsAccessToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ requests })
+    }
+  );
 }
 
 // ═══════════════════════════════════════════════

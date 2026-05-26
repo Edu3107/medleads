@@ -1900,17 +1900,27 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
     <section class="page-content active" id="page-dashboard">
       <!-- META DE VENDAS -->
       <div class="meta-card" id="metaCard">
-        <div class="meta-header">
-          <span class="meta-title">🎯 Meta Mensal de Vendas</span>
-          <button class="meta-edit-btn" onclick="editMeta()">✏️ Definir meta</button>
-        </div>
-        <div class="meta-valores">
-          <span class="meta-atual" id="metaAtual">R$ 0</span>
-          <span class="meta-total-val" id="metaTotalVal">/ R$ 10.000</span>
-          <span class="meta-pct low" id="metaPct">0%</span>
-        </div>
-        <div class="meta-bar-track">
-          <div class="meta-bar-fill" id="metaBarFill" style="width:0%"></div>
+        <div class="meta-inner">
+          <div class="meta-icon-wrap">🎯</div>
+          <div class="meta-info">
+            <div class="meta-header">
+              <span class="meta-title">Meta Mensal de Vendas</span>
+              <button class="meta-edit-btn" onclick="editMeta()">✏️ Ajustar meta</button>
+            </div>
+            <div class="meta-valores">
+              <span class="meta-atual" id="metaAtual">R$ 0</span>
+              <span class="meta-total-val" id="metaTotalVal">/ R$ 10.000</span>
+              <span class="meta-pct low" id="metaPct">0%</span>
+            </div>
+            <div class="meta-bar-track">
+              <div class="meta-bar-fill" id="metaBarFill" style="width:0%"></div>
+            </div>
+            <div class="meta-sub-info">
+              <span class="meta-sub-item">Convertidos: <strong id="metaConvCount">0</strong></span>
+              <span class="meta-sub-item">Faltam: <strong id="metaFaltam">—</strong></span>
+              <span class="meta-sub-item" id="metaStatus"></span>
+            </div>
+          </div>
         </div>
       </div>
       <div class="metrics-grid">
@@ -3195,14 +3205,24 @@ window.deleteCurrentLead = function() {
 let metaValor = parseFloat(localStorage.getItem('medleads_meta') || '10000');
 
 function renderMeta() {
-  const receita = leads.filter(l => l.status === 'Convertido').reduce((s,l) => s + (l.valor||0), 0);
+  const convertidos = leads.filter(l => l.status === 'Convertido');
+  const receita = convertidos.reduce((s,l) => s + (l.valor||0), 0);
   const pct = Math.min(Math.round(receita / metaValor * 100), 100);
+  const faltam = Math.max(0, metaValor - receita);
+
   document.getElementById('metaAtual').textContent    = 'R$ ' + receita.toLocaleString('pt-BR');
   document.getElementById('metaTotalVal').textContent = '/ R$ ' + metaValor.toLocaleString('pt-BR');
   document.getElementById('metaPct').textContent      = pct + '%';
   document.getElementById('metaBarFill').style.width  = pct + '%';
+  if (document.getElementById('metaConvCount'))
+    document.getElementById('metaConvCount').textContent = convertidos.length;
+  if (document.getElementById('metaFaltam'))
+    document.getElementById('metaFaltam').textContent = faltam > 0 ? 'R$ ' + faltam.toLocaleString('pt-BR') : '✅ Atingida!';
+  if (document.getElementById('metaStatus'))
+    document.getElementById('metaStatus').textContent = pct >= 100 ? '🏆 Meta batida!' : pct >= 75 ? '🔥 Quase lá!' : pct >= 50 ? '💪 Na metade' : '🚀 Em progresso';
+
   const pctEl = document.getElementById('metaPct');
-  pctEl.className = 'meta-pct ' + (pct >= 80 ? 'ok' : 'low');
+  pctEl.className = 'meta-pct ' + (pct >= 100 ? 'ok' : pct >= 50 ? 'low' : 'danger');
 }
 
 window.editMeta = function() {

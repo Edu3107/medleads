@@ -4079,53 +4079,58 @@ function _showPerfilMsg(msg, type) {
 async function syncLeadsPendentes() {
   if (!_db || !_uid) return;
   try {
-    const snap = await _db.collection('leads_pendentes')
-      .where('sincronizado', '==', false)
-      .limit(20).get().catch(() => null);
-
-    // Tenta sem filtro se não tiver índice
-    const snap2 = snap || await _db.collection('leads_pendentes').limit(20).get().catch(() => null);
-    if (!snap2 || snap2.empty) return;
+    // Buscar todos sem filtro — mais simples e confiável
+    const snap = await _db.collection('leads_pendentes').limit(50).get();
+    if (snap.empty) return;
 
     let novos = 0;
-    const batch = _db.batch();
+    const toDelete = [];
 
-    snap2.forEach(doc => {
+    snap.forEach(doc => {
       const data = doc.data();
-      // Verificar se já existe pelo email
-      const existe = leads.some(l => l.email === data.email && l.nome === data.nome);
+      // Pular se já sincronizado
+      if (data.sincronizado === true) return;
+      // Pular se já existe no app (mesmo email)
+      const existe = leads.some(l => l.email === data.email);
       if (!existe) {
         const novoLead = {
           id: nextId++,
-          nome:   data.nome||'',
-          email:  data.email||'',
-          whats:  data.whats||'',
-          crm:    data.crm||'',
-          spec:   data.spec||'',
-          cidade: data.cidade||'',
-          curso:  data.curso||'',
-          status: 'Novo',
-          origem: 'Formulário Web',
-          valor:  0,
-          score:  50,
-          contato:'Hoje',
-          obs:    data.obs||'Lead captado via formulário público.',
-          hist:   [{emoji:'📥', acao:'Lead captado via formulário web', quando:'Agora'}]
+          nome:    data.nome||'',
+          email:   data.email||'',
+          whats:   data.whats||'',
+          crm:     data.crm||'',
+          spec:    data.spec||'',
+          cidade:  data.cidade||'',
+          curso:   data.curso||'',
+          status:  'Novo',
+          origem:  'Formulário Web',
+          valor:   0,
+          score:   55,
+          contato: 'Hoje',
+          obs:     'Lead captado via formulário público.',
+          hist:    [{emoji:'📥', acao:'Lead captado via formulário web', quando:'Agora'}]
         };
         leads.unshift(novoLead);
         novos++;
       }
       // Marcar como sincronizado
-      batch.update(doc.ref, { sincronizado: true });
+      toDelete.push(doc.ref);
     });
 
+    // Atualizar todos como sincronizados
+    for (const ref of toDelete) {
+      ref.update({ sincronizado: true }).catch(()=>{});
+    }
+
     if (novos > 0) {
-      await batch.commit();
+      nextId = Math.max(...leads.map(l => l.id)) + 1;
       await saveLeads();
-      showToast(`🎉 ${novos} novo${novos>1?'s':''} lead${novos>1?'s':''} captado${novos>1?'s':''}!`, 'success');
+      renderDashboard();
+      if (currentPage2 === 'leads') renderLeadsTable();
+      showToast('🎉 ' + novos + ' novo' + (novos>1?'s':'') + ' lead' + (novos>1?'s':'') + ' captado' + (novos>1?'s':'') + '!', 'success');
     }
   } catch(e) {
-    console.warn('Sync leads pendentes:', e.message);
+    console.warn('Sync leads pendentes erro:', e.message);
   }
 }
 

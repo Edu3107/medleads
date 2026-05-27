@@ -1853,6 +1853,35 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
 .adv-filter-group select:focus { border-color: var(--gold); }
 .adv-filter-group input::placeholder { color: var(--text3); }
 .adv-filter-group select option { background: var(--bg2); }
+
+/* ── LOGIN MOBILE ── */
+@media (max-width: 768px) {
+  #loginScreen {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .login-left {
+    display: none !important;
+  }
+  .login-right {
+    width: 100% !important;
+    min-width: unset !important;
+    max-width: unset !important;
+    flex: 1;
+    padding: 40px 24px 32px !important;
+    border-left: none !important;
+    justify-content: center;
+  }
+  .login-right::before {
+    display: none !important;
+  }
+  .login-logo-mobile {
+    display: flex !important;
+  }
+  .login-panels {
+    max-width: 100% !important;
+  }
+}
 </style>
 <script src="https://apis.google.com/js/api.js" defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>

@@ -3648,8 +3648,9 @@ window.sortLeads = function(col) {
 window.toggleAdvancedFilters = function() {
   const el = document.getElementById('advancedFilters');
   const btn = document.getElementById('btnAdvanced');
-  el.classList.toggle('open');
-  btn.textContent = el.classList.contains('open') ? '✕ Fechar' : '⚙ Filtros';
+  const isOpen = el.style.display === 'grid';
+  el.style.display = isOpen ? 'none' : 'grid';
+  btn.textContent = isOpen ? '⚙ Filtros' : '✕ Fechar';
 };
 
 window.clearFilters = function() {

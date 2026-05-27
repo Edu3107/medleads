@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cursos ISA Digital — Quero me inscrever</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gold:#C9A84C;--gold-light:#E8C97A;--gold-dark:#8B6914;
+  --bg:#0A0A0B;--surface:#16161A;--border:rgba(201,168,76,.15);
+  --border2:rgba(255,255,255,.06);--text:#F0EDE6;--text2:#A8A49C;--text3:#6B6760;
+  --success:#4CAF7A;--radius:10px;--radius-lg:16px;
+}
+html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(201,168,76,.07) 0%,transparent 60%),var(--bg)}
+
+canvas#bg{position:fixed;inset:0;pointer-events:none;z-index:0}
+
+.wrap{position:relative;z-index:1;width:100%;max-width:480px}
+
+.logo-area{text-align:center;margin-bottom:32px;animation:fadeUp .6s ease both}
+.logo-area img{width:80px;height:80px;object-fit:contain}
+.logo-area h1{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;
+  background:linear-gradient(90deg,var(--gold-dark),var(--gold-light));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-top:8px}
+.logo-area p{font-size:13px;color:var(--text3);margin-top:4px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:36px 32px;box-shadow:0 8px 40px rgba(0,0,0,.4);animation:fadeUp .7s .1s ease both}
+
+.card h2{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--text);
+  margin-bottom:6px}
+.card p{font-size:13px;color:var(--text3);margin-bottom:24px;line-height:1.6}
+
+.field{margin-bottom:16px}
+.field label{display:block;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--text3);margin-bottom:7px}
+.field input,.field select{width:100%;background:rgba(255,255,255,.03);border:1px solid var(--border2);
+  border-radius:var(--radius);padding:12px 14px;color:var(--text);
+  font-family:'DM Sans',sans-serif;font-size:14px;outline:none;
+  transition:border-color .2s,box-shadow .2s}
+.field input:focus,.field select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,76,.08)}
+.field input::placeholder{color:var(--text3)}
+.field select option{background:#1a1a1e}
+
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+.btn-submit{width:100%;background:linear-gradient(135deg,var(--gold-dark),var(--gold));
+  border:none;border-radius:var(--radius);padding:14px;color:#0A0A0B;
+  font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;
+  letter-spacing:.04em;cursor:pointer;margin-top:8px;
+  transition:opacity .2s,transform .15s;box-shadow:0 4px 20px rgba(201,168,76,.25)}
+.btn-submit:hover{opacity:.88;transform:translateY(-1px)}
+.btn-submit:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+.success-msg{display:none;text-align:center;padding:24px}
+.success-msg .s-icon{font-size:48px;margin-bottom:16px}
+.success-msg h3{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--gold-light);margin-bottom:8px}
+.success-msg p{font-size:13px;color:var(--text3);line-height:1.6}
+
+.footer-note{text-align:center;margin-top:20px;font-size:11px;color:var(--text3);
+  animation:fadeUp .8s .2s ease both}
+.footer-note a{color:var(--gold);text-decoration:none}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:480px){.card{padding:24px 20px}.row2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<div class="wrap">
+  <div class="logo-area">
+    <div style="width:64px;height:64px;background:linear-gradient(135deg,#8B6914,#C9A84C);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto">🫀</div>
+    <h1>ISA Digital</h1>
+    <p>Instituto Saber e Aprender</p>
+  </div>
+
+  <div class="card">
+    <div id="formArea">
+      <h2>Quero me inscrever</h2>
+      <p>Preencha seus dados e nossa equipe entrará em contato em até 24h com todas as informações.</p>
+
+      <div class="row2">
+        <div class="field">
+          <label>Nome completo *</label>
+          <input type="text" id="f-nome" placeholder="Dr. João Silva" required>
+        </div>
+        <div class="field">
+          <label>CRM</label>
+          <input type="text" id="f-crm" placeholder="CRM/SP 123456">
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>E-mail *</label>
+          <input type="email" id="f-email" placeholder="seu@email.com" required>
+        </div>
+        <div class="field">
+          <label>WhatsApp *</label>
+          <input type="tel" id="f-whats" placeholder="(11) 99999-9999" required>
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label>Especialidade</label>
+          <select id="f-spec">
+            <option value="">Selecione...</option>
+            <option>Cardiologista</option>
+            <option>Clínico Geral</option>
+            <option>Pediatra</option>
+            <option>Intensivista</option>
+            <option>Emergencista</option>
+            <option>Médico Residente</option>
+            <option>Outro</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Cidade / Estado</label>
+          <input type="text" id="f-cidade" placeholder="São Paulo, SP">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Curso de interesse *</label>
+        <select id="f-curso" required>
+          <option value="">Selecione o curso...</option>
+          <option>Curso Preparatório para a Prova de Título de Ecocardiografia 2026</option>
+          <option>Ecocardiografia nas Valvopatias de Ponta a Ponta</option>
+          <option>Assinatura Ecoinsights</option>
+          <option>Eco Estresse Elite</option>
+          <option>EcoVision Training – Imersão Presencial</option>
+          <option>Bastidores da Prova de Título</option>
+          <option>Mentoria com a Dra. Ana Camarozano</option>
+        </select>
+      </div>
+
+      <div id="formError" style="display:none;background:rgba(224,85,85,.12);border:1px solid rgba(224,85,85,.3);border-radius:8px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:12px"></div>
+
+      <button class="btn-submit" id="btnSubmit" onclick="submitForm()">
+        Quero ser contactado →
+      </button>
+    </div>
+
+    <div class="success-msg" id="successMsg">
+      <div class="s-icon">🎉</div>
+      <h3>Solicitação enviada!</h3>
+      <p>Obrigado pelo interesse! Nossa equipe entrará em contato em até 24 horas pelo WhatsApp ou e-mail cadastrado.</p>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    Desenvolvido por <a href="https://www.isadigital.com.br" target="_blank">ISA Digital</a> · Instituto Saber e Aprender
+  </div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey:            "AIzaSyDrgyPcmwHmXskuQly8sKZvNhM-F0MdDto",
+  authDomain:        "medleads-ad333.firebaseapp.com",
+  projectId:         "medleads-ad333",
+  storageBucket:     "medleads-ad333.firebasestorage.app",
+  messagingSenderId: "887923599047",
+  appId:             "1:887923599047:web:1ede806aeee1cee5b580e2"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// Partículas
+const canvas = document.getElementById('bg');
+const ctx = canvas.getContext('2d');
+function resize(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
+resize(); window.addEventListener('resize',resize);
+const GOLD=[[201,168,76],[240,201,107],[184,136,46]];
+class P{
+  constructor(){this.reset(true)}
+  reset(i=false){this.x=Math.random()*canvas.width;this.y=i?Math.random()*canvas.height:canvas.height+10;
+    this.r=Math.random()*1.2+.3;this.s=Math.random()*.3+.08;this.d=(Math.random()-.5)*.2;
+    this.life=0;this.max=Math.random()*300+150;this.c=GOLD[Math.floor(Math.random()*3)];this.a=0}
+  update(){this.y-=this.s;this.x+=this.d;this.life++;const t=this.life/this.max;
+    this.a=t<.15?t/.15:t>.75?(1-t)/.25:1;if(this.life>=this.max||this.y<-10)this.reset()}
+  draw(){const[r,g,b]=this.c;ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(${r},${g},${b},${this.a*.4})`;ctx.fill()}
+}
+const pts=Array.from({length:60},()=>new P());
+function loop(){ctx.clearRect(0,0,canvas.width,canvas.height);pts.forEach(p=>{p.update();p.draw()});requestAnimationFrame(loop)}
+loop();
+
+// Submit
+async function submitForm(){
+  const nome  = document.getElementById('f-nome').value.trim();
+  const email = document.getElementById('f-email').value.trim();
+  const whats = document.getElementById('f-whats').value.trim();
+  const curso = document.getElementById('f-curso').value;
+  const errEl = document.getElementById('formError');
+  errEl.style.display='none';
+
+  if(!nome||!email||!whats||!curso){
+    errEl.textContent='Preencha todos os campos obrigatórios (*)';
+    errEl.style.display='block'; return;
+  }
+
+  const btn = document.getElementById('btnSubmit');
+  btn.disabled=true; btn.textContent='Enviando...';
+
+  const lead = {
+    id: Date.now(),
+    nome, email,
+    whats: document.getElementById('f-whats').value,
+    crm:   document.getElementById('f-crm').value,
+    spec:  document.getElementById('f-spec').value,
+    cidade:document.getElementById('f-cidade').value,
+    curso,
+    status:'Novo',
+    origem:'Formulário Web',
+    valor:0, score:50,
+    contato:'Hoje',
+    obs:'Lead captado via formulário público.',
+    hist:[{emoji:'📥',acao:'Lead captado via formulário web',quando:'Agora'}]
+  };
+
+  try {
+    // Buscar leads existentes do usuário padrão (primeiro usuário)
+    // Salvar na coleção pública de leads pendentes
+    await db.collection('leads_pendentes').add({...lead, criadoEm: new Date().toISOString()});
+
+    document.getElementById('formArea').style.display='none';
+    document.getElementById('successMsg').style.display='block';
+  } catch(e) {
+    errEl.textContent='Erro ao enviar. Tente novamente.';
+    errEl.style.display='block';
+    btn.disabled=false; btn.textContent='Quero ser contactado →';
+  }
+}
+</script>
+</body>
+</html>

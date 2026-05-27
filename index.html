@@ -1815,6 +1815,44 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
 @media(max-width:900px) {
   #dashAnalytics { grid-template-columns:1fr!important; }
 }
+
+/* ── FILTROS AVANÇADOS ── */
+.advanced-filters {
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  margin-bottom: 14px;
+  animation: fadeUp .2s ease both;
+}
+.advanced-filters.open { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; }
+.adv-filter-group label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 6px;
+}
+.adv-filter-group input,
+.adv-filter-group select {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  outline: none;
+  transition: border-color .2s;
+}
+.adv-filter-group input:focus,
+.adv-filter-group select:focus { border-color: var(--gold); }
+.adv-filter-group input::placeholder { color: var(--text3); }
+.adv-filter-group select option { background: var(--bg2); }
 </style>
 <script src="https://apis.google.com/js/api.js" defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -2167,7 +2205,7 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
       </div>
 
       <!-- FILTROS AVANÇADOS -->
-      <div class="advanced-filters" id="advancedFilters">
+      <div class="advanced-filters" id="advancedFilters" style="display:none">
         <div class="adv-filter-group">
           <label>Score mínimo</label>
           <input type="number" id="filterScoreMin" placeholder="0" min="0" max="100" oninput="filterLeads()">

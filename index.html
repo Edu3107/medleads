@@ -4088,6 +4088,63 @@ window.openEmail = function() {
 
 
 
+
+// ═══════════════════════════════════════════════
+//  IA LOCAL — FALLBACK SEM API
+// ═══════════════════════════════════════════════
+function gerarRespostaLocal(pergunta, lead) {
+  const q = pergunta.toLowerCase();
+  const nome = lead ? lead.nome.replace(/^Dr[a]?\.?\s*/i,'').split(' ')[0] : '';
+  const curso = lead ? (lead.curso || 'o curso') : 'o curso';
+  const status = lead ? lead.status : '';
+
+  // Mensagem WhatsApp
+  if (q.includes('whatsapp') || q.includes('mensagem') || q.includes('template')) {
+    if (!lead) return '💬 Para criar uma mensagem personalizada, abra primeiro um lead específico e use o botão **🤖 Assistente IA** no drawer do lead.';
+    const msgs = {
+      'Novo': `Olá ${nome}! Tudo bem? 😊\n\nSou da equipe ISA Digital e vi que você tem interesse no curso de *${curso}*.\n\nPosso te passar mais detalhes sobre conteúdo e próximas turmas?`,
+      'Contato': `Olá ${nome}, tudo bem? 👋\n\nPassando para dar continuidade à nossa conversa sobre o *${curso}*.\n\nTem alguma dúvida que posso esclarecer?`,
+      'Negociando': `${nome}, preparei uma condição especial para você! 🎯\n\nO *${curso}* está com turma abrindo em breve. Podemos garantir sua vaga com as melhores condições.\n\nPodemos fechar hoje?`,
+      'Perdido': `Olá ${nome}! 😊\n\nSei que o momento não foi ideal antes, mas temos novidades no *${curso}* que podem te interessar.\n\nTem 5 minutinhos?`,
+    };
+    const msg = msgs[status] || msgs['Novo'];
+    return `📱 **Mensagem sugerida para ${lead.nome}:**\n\n${msg}\n\n_Copie e envie pelo WhatsApp ou use o botão verde no drawer do lead._`;
+  }
+
+  // Análise do lead
+  if (q.includes('analis') || q.includes('perfil') || q.includes('lead')) {
+    if (!lead) return '📊 Para analisar um lead específico, abra-o no drawer e clique em **🤖 Assistente IA de Vendas**.';
+    const score = lead.score || 0;
+    const potencial = score >= 70 ? 'ALTO' : score >= 40 ? 'MÉDIO' : 'BAIXO';
+    return `📊 **Análise: ${lead.nome}**\n\n**Potencial:** ${potencial} (Score ${score}/100)\n**Especialidade:** ${lead.spec || '—'}\n**Interesse:** ${curso}\n**Origem:** ${lead.origem || '—'}\n**Status:** ${status}\n\n**Recomendação:** ${score >= 70 ? 'Lead quente! Priorize contato hoje.' : score >= 40 ? 'Lead morno. Nutra com mais informações sobre o curso.' : 'Lead frio. Envie conteúdo educativo antes de oferecer.'}`;
+  }
+
+  // Próximo passo
+  if (q.includes('próximo') || q.includes('passo') || q.includes('fazer') || q.includes('abordar')) {
+    if (!lead) return '🎯 Abra um lead específico para receber sugestões personalizadas de próximo passo.';
+    const passos = {
+      'Novo': `1. Envie WhatsApp de apresentação em até 2h\n2. Apresente o ${curso} com foco na especialidade ${lead.spec||'médica'}\n3. Pergunte sobre a disponibilidade para turma`,
+      'Contato': `1. Faça follow-up se não respondeu em 24h\n2. Envie materiais sobre o ${curso}\n3. Agende uma ligação rápida de 15 min`,
+      'Negociando': `1. Apresente condições de pagamento\n2. Crie urgência: vagas limitadas\n3. Ofereça bônus exclusivo para fechar hoje`,
+      'Perdido': `1. Aguarde 30 dias antes de reativar\n2. Envie novidades ou turma nova\n3. Ofereça desconto ou condição especial`,
+    };
+    return `🎯 **Próximos passos para ${lead.nome}:**\n\n${passos[status] || passos['Novo']}`;
+  }
+
+  // Pipeline geral
+  if (q.includes('pipeline') || q.includes('funil') || q.includes('geral') || q.includes('resumo')) {
+    const total = leads.length;
+    const conv = leads.filter(l=>l.status==='Convertido').length;
+    const neg = leads.filter(l=>l.status==='Negociando').length;
+    const novos = leads.filter(l=>l.status==='Novo').length;
+    const receita = leads.filter(l=>l.status==='Convertido').reduce((s,l)=>s+(l.valor||0),0);
+    return `📈 **Resumo do Pipeline:**\n\n🔵 Novos: ${novos} leads\n🟡 Negociando: ${neg} leads\n✅ Convertidos: ${conv} leads\n💰 Receita: R$ ${receita.toLocaleString('pt-BR')}\n\n**Prioridade:** ${neg > 0 ? `Feche os ${neg} leads em negociação — são os mais próximos de converter!` : 'Foque em converter os leads novos para negociação.'}`;
+  }
+
+  // Resposta padrão
+  return `💡 Posso ajudar com:\n\n• **Mensagens WhatsApp** personalizadas\n• **Análise** do perfil do lead\n• **Próximos passos** para cada status\n• **Resumo** do seu pipeline\n\nAbra um lead específico no drawer e use o botão 🤖 para análise personalizada!`;
+}
+
 // ═══════════════════════════════════════════════
 //  ASSISTENTE IA DE VENDAS
 // ═══════════════════════════════════════════════
@@ -4172,19 +4229,20 @@ Responda em português brasileiro, seja direto e prático. Use formatação simp
   _iaHistory.push({ role: 'user', content: q });
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    // Usar Cloudflare Worker como proxy para a API do Claude
+    const resp = await fetch('https://medleads-ai.eduardomachado.workers.dev/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
         system: systemPrompt,
         messages: _iaHistory
       })
     });
 
+    if (!resp.ok) throw new Error('Servidor IA indisponível');
+
     const data = await resp.json();
-    const text = data.content?.[0]?.text || 'Erro ao processar resposta.';
+    const text = data.content?.[0]?.text || data.text || 'Erro ao processar resposta.';
 
     loadDiv.remove();
     addIAMsg('ai', text);
@@ -4192,7 +4250,10 @@ Responda em português brasileiro, seja direto e prático. Use formatação simp
 
   } catch(e) {
     loadDiv.remove();
-    addIAMsg('ai', '❌ Erro ao conectar com a IA. Verifique sua conexão e tente novamente.');
+    // Fallback: resposta local baseada em regras
+    const respLocal = gerarRespostaLocal(q, leadAtual);
+    addIAMsg('ai', respLocal);
+    _iaHistory.push({ role: 'assistant', content: respLocal });
   }
 
   document.getElementById('iaSendBtn').disabled = false;

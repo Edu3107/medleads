@@ -3614,6 +3614,11 @@ function renderRelatorios() {
   document.getElementById('origemProgress').innerHTML = Object.entries(origCounts).sort((a,b)=>b[1]-a[1]).map(([o,n]) =>
     `<div class="progress-item"><div class="progress-head"><span>${o}</span><span>${n}</span></div><div class="progress-track"><div class="progress-fill" style="width:${Math.round(n/maxO*100)}%"></div></div></div>`
   ).join('');
+
+  // Novos cards analíticos
+  renderRelatorioMensal();
+  renderPrevisao();
+  renderMapaCalor();
 }
 
 // ═══════════════════════════════════════════════

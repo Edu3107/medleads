@@ -603,7 +603,7 @@ body {
   top: 0;
   background: rgba(10,10,11,0.92);
   backdrop-filter: blur(12px);
-  z-index: 50;
+  z-index: 200;
 }
 
 .topbar-title {
@@ -1980,6 +1980,7 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
   z-index: 500;
   text-align: center;
   opacity: 0;
+  pointer-events: none;
   transition: all .4s cubic-bezier(.16,1,.3,1);
   pointer-events: none;
   min-width: 280px;
@@ -2337,10 +2338,11 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
   width: 320px;
   box-shadow: 0 8px 32px rgba(0,0,0,.4);
   z-index: 500;
+  pointer-events: none;
   transform: translateX(360px);
   transition: transform .4s cubic-bezier(.16,1,.3,1);
 }
-.daily-toast.show { transform: translateX(0); }
+.daily-toast.show { transform: translateX(0); pointer-events: all; }
 .daily-toast-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
 .daily-toast-items { font-size: 12px; color: var(--text3); line-height: 1.8; }
 .daily-toast-close { position: absolute; top: 10px; right: 12px; background: none; border: none; color: var(--text3); cursor: pointer; font-size: 16px; }
@@ -5470,5 +5472,159 @@ window.runGlobalSearch = function(q) {
 // ═══════════════════════════════════════════════
 //  TEMPLATES DE MENSAGEM
 </script>
+
+<!-- MODAL DASHBOARD EXECUTIVO -->
+<div class="exec-modal" id="execModal">
+  <div class="exec-box">
+    <div class="exec-header">
+      <div>
+        <h2>📊 Dashboard Executivo</h2>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px" id="execDate"></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="btn-outline" style="font-size:11px;padding:6px 12px" onclick="exportExecPDF()">📄 PDF</button>
+        <button onclick="closeExec()" style="background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;line-height:1">×</button>
+      </div>
+    </div>
+    <div class="exec-body" id="execBody"></div>
+  </div>
+</div>
+
+<!-- MODAL ASSISTENTE IA -->
+<div class="ia-modal" id="iaModal">
+  <div class="ia-box">
+    <div class="ia-header">
+      <div class="ia-avatar">🤖</div>
+      <div>
+        <div class="ia-title">Assistente IA de Vendas</div>
+        <div class="ia-sub" id="iaLeadContext">Powered by Claude · ISA Digital</div>
+      </div>
+      <button onclick="closeIA()" style="margin-left:auto;background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div class="ia-messages" id="iaMessages">
+      <div class="ia-msg ai">👋 Olá! Sou seu assistente de vendas da ISA Digital. Como posso ajudar?</div>
+    </div>
+    <div class="ia-suggestions" id="iaSuggestions">
+      <button class="ia-sugg-btn" onclick="iaSuggestion(this)">Como abordar este lead?</button>
+      <button class="ia-sugg-btn" onclick="iaSuggestion(this)">Criar mensagem WhatsApp</button>
+      <button class="ia-sugg-btn" onclick="iaSuggestion(this)">Analisar perfil do lead</button>
+      <button class="ia-sugg-btn" onclick="iaSuggestion(this)">Próximo passo ideal</button>
+    </div>
+    <div class="ia-input-wrap">
+      <textarea class="ia-input" id="iaInput" rows="1" placeholder="Pergunte sobre seus leads..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendIA()}"></textarea>
+      <button class="ia-send" id="iaSendBtn" onclick="sendIA()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0A0A0B" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- BUSCA GLOBAL -->
+<div class="welcome-toast" id="welcomeToast">
+  <div class="wt-emoji">👋</div>
+  <div class="wt-title" id="welcomeTitle">Bom dia!</div>
+  <div class="wt-sub" id="welcomeSub">Carregando...</div>
+</div>
+
+<!-- ONBOARDING -->
+<div class="onboarding-overlay" id="onboardingOverlay">
+  <div class="onboarding-box">
+    <div class="onboarding-steps">
+      <div class="onboarding-step-dot active" id="ob-dot-0"></div>
+      <div class="onboarding-step-dot" id="ob-dot-1"></div>
+      <div class="onboarding-step-dot" id="ob-dot-2"></div>
+    </div>
+    <div id="onboardingContent"></div>
+    <div class="onboarding-actions">
+      <button class="btn-outline" id="obSkip" onclick="skipOnboarding()">Pular</button>
+      <button class="btn-action" id="obNext" onclick="nextOnboarding()">Próximo →</button>
+    </div>
+  </div>
+</div>
+
+<!-- QR CODE -->
+<div class="qr-modal" id="qrModal">
+  <div class="qr-box">
+    <h3>📱 QR Code do Formulário</h3>
+    <p>Compartilhe em eventos e apresentações</p>
+    <canvas id="qrCanvas" width="200" height="200" style="margin:0 auto 16px;display:block;border-radius:10px"></canvas>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:16px;word-break:break-all">medleads-gamma.vercel.app/form.html</div>
+    <div style="display:flex;gap:8px;justify-content:center">
+      <button class="btn-action" onclick="downloadQR()">⬇ Baixar QR</button>
+      <button class="btn-outline" onclick="closeQR()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICAÇÃO DIÁRIA -->
+<div class="daily-toast" id="dailyToast">
+  <button class="daily-toast-close" onclick="closeDailyToast()">×</button>
+  <div class="daily-toast-title" id="dailyToastTitle">☀️ Bom dia!</div>
+  <div class="daily-toast-items" id="dailyToastItems"></div>
+</div>
+
+<!-- MODAL CONFIRMAR EXCLUSÃO -->
+<div class="confirm-modal" id="confirmModal">
+  <div class="confirm-box">
+    <div class="confirm-icon">🗑️</div>
+    <div class="confirm-title">Excluir lead?</div>
+    <div class="confirm-sub" id="confirmSub">Esta ação não pode ser desfeita.</div>
+    <div class="confirm-actions">
+      <button class="btn-outline" onclick="closeConfirm()">Cancelar</button>
+      <button class="btn-danger" id="confirmBtn">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TEMPLATES -->
+<div class="templates-modal" id="templatesModal">
+  <div class="templates-box">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:15px;font-weight:600;color:var(--text)">📝 Templates de Mensagem</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">Selecione um template para usar</div>
+      </div>
+      <button onclick="closeTemplates()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">×</button>
+    </div>
+    <div style="padding:12px 20px;border-bottom:1px solid var(--border2)">
+      <button class="btn-action" style="font-size:12px;padding:7px 14px" onclick="novoTemplate()">+ Novo template</button>
+    </div>
+    <div style="overflow-y:auto;flex:1" id="templatesList"></div>
+  </div>
+</div>
+
+<!-- GOOGLE SHEETS MODAL -->
+<div class="sheets-modal" id="sheetsModal" style="display:none">
+  <div class="sheets-box">
+    <h3>📊 Exportar para Google Sheets</h3>
+    <p>Seus leads serão enviados para uma planilha nova no seu Google Drive.</p>
+    <div class="sheets-status" id="sheetsStatus">Clique em "Conectar e Exportar" para começar.</div>
+    <div class="sheets-actions">
+      <button class="btn-outline" onclick="closeSheetsModal()">Cancelar</button>
+      <button class="btn-action" id="btnSheetsExport" onclick="exportToSheets()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Conectar e Exportar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- BUSCA GLOBAL MODAL -->
+<div class="global-search-overlay" id="globalSearchOverlay" onclick="if(event.target===this)closeGlobalSearch()">
+  <div class="global-search-box">
+    <div class="global-search-input-wrap">
+      <span style="font-size:18px">🔍</span>
+      <input type="text" id="globalSearchInput" placeholder="Buscar leads, cursos, páginas..." oninput="runGlobalSearch(this.value)" autocomplete="off">
+      <span style="font-size:12px;color:var(--text3);cursor:pointer" onclick="closeGlobalSearch()">ESC</span>
+    </div>
+    <div class="global-search-results" id="globalSearchResults">
+      <div class="global-search-empty">Digite para buscar...</div>
+    </div>
+    <div class="global-search-hint">
+      <span>↑↓ navegar</span><span>Enter selecionar</span><span>ESC fechar</span>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

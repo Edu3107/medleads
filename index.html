@@ -2431,6 +2431,7 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
 </style>
 <script src="https://apis.google.com/js/api.js" defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -5214,88 +5215,228 @@ window.downloadQR = function() {
 //  EXPORTAR PDF
 // ═══════════════════════════════════════════════
 window.exportPDF = function() {
-  showToast('Abrindo PDF para salvar...', 'success');
+  showToast('Gerando PDF...', 'success');
 
-  const conv    = leads.filter(l=>l.status==='Convertido');
-  const neg     = leads.filter(l=>l.status==='Negociando');
-  const receita = conv.reduce((s,l)=>s+(l.valor||0),0);
-  const ticket  = conv.length>0 ? Math.round(receita/conv.length) : 0;
-  const txConv  = leads.length>0 ? (conv.length/leads.length*100).toFixed(1) : 0;
-  const scoreM  = Math.round(leads.reduce((s,l)=>s+(l.score||0),0)/(leads.length||1));
-  const hoje    = new Date().toLocaleDateString('pt-BR');
-  const hojeFile= hoje.replace(/\//g,'-');
-  const total   = leads.length;
-  const SC = {Novo:'#5B8DEF',Contato:'#E8A94C',Negociando:'#C9A84C',Convertido:'#4CAF7A',Perdido:'#E05555'};
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const hoje = new Date().toLocaleDateString('pt-BR');
+    const W = 210; // largura A4
+    const margin = 16;
+    let y = 0;
 
-  const statusCount={}, cursoCount={}, origemCount={};
-  leads.forEach(l=>{
-    statusCount[l.status]=(statusCount[l.status]||0)+1;
-    if(l.curso)  cursoCount[l.curso]=(cursoCount[l.curso]||0)+1;
-    if(l.origem) origemCount[l.origem]=(origemCount[l.origem]||0)+1;
-  });
+    // Cores
+    const GOLD    = [201, 168, 76];
+    const GOLD_D  = [139, 105, 20];
+    const DARK    = [26, 24, 20];
+    const GRAY    = [168, 164, 156];
+    const WHITE   = [255, 255, 255];
+    const GREEN   = [76, 175, 122];
+    const BLUE    = [91, 141, 239];
+    const ORANGE  = [232, 169, 76];
+    const RED     = [224, 85, 85];
+    const BG      = [249, 247, 243];
 
-  const topCursos  = Object.entries(cursoCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  const topOrigens = Object.entries(origemCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  const maxC = topCursos[0]?.[1]||1;
-  const maxO = topOrigens[0]?.[1]||1;
+    const SC_COLORS = {
+      Novo: BLUE, Contato: ORANGE, Negociando: GOLD,
+      Convertido: GREEN, Perdido: RED
+    };
 
-  const stHtml = Object.entries(statusCount).map(([s,n])=>
-    '<div class="st-item" style="background:'+SC[s]+'15;border:1px solid '+SC[s]+'35">'+
-    '<div class="st-v" style="color:'+SC[s]+'">'+n+'</div>'+
-    '<div class="st-l">'+s+'</div></div>'
-  ).join('');
+    // Dados
+    const total   = leads.length;
+    const conv    = leads.filter(l=>l.status==='Convertido');
+    const neg     = leads.filter(l=>l.status==='Negociando');
+    const receita = conv.reduce((s,l)=>s+(l.valor||0),0);
+    const ticket  = conv.length>0 ? Math.round(receita/conv.length) : 0;
+    const txConv  = total>0 ? (conv.length/total*100).toFixed(1) : 0;
+    const scoreM  = Math.round(leads.reduce((s,l)=>s+(l.score||0),0)/(total||1));
 
-  const curHtml = topCursos.map(([c,n],i)=>
-    '<div class="row"><div class="rank">'+(i+1)+'</div>'+
-    '<div class="nm" title="'+c+'">'+c.substring(0,30)+(c.length>30?'...':'')+'</div>'+
-    '<div class="bar-w"><div class="bar-f" style="width:'+Math.round(n/maxC*100)+'%"></div></div>'+
-    '<div class="cnt">'+n+'</div></div>'
-  ).join('');
+    const stCount = {}, ccCount = {}, ocCount = {};
+    leads.forEach(l=>{
+      stCount[l.status]=(stCount[l.status]||0)+1;
+      if(l.curso)  ccCount[l.curso]=(ccCount[l.curso]||0)+1;
+      if(l.origem) ocCount[l.origem]=(ocCount[l.origem]||0)+1;
+    });
+    const topCursos  = Object.entries(ccCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    const topOrigens = Object.entries(ocCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const maxC = topCursos[0]?.[1]||1;
+    const maxO = topOrigens[0]?.[1]||1;
 
-  const origHtml = topOrigens.map(([o,n])=>
-    '<div class="row"><div class="nm">'+o+'</div>'+
-    '<div class="bar-w"><div class="bar-f" style="width:'+Math.round(n/maxO*100)+'%"></div></div>'+
-    '<div style="font-size:10px;color:#A8A49C;width:24px;text-align:right;flex-shrink:0">'+Math.round(n/total*100)+'%</div>'+
-    '<div class="cnt">'+n+'</div></div>'
-  ).join('');
+    // ── CABEÇALHO ──
+    doc.setFillColor(...DARK);
+    doc.rect(0, 0, W, 28, 'F');
+    doc.setFillColor(...GOLD);
+    doc.rect(0, 27, W, 1, 'F');
 
-  const css = '<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;background:#fff;color:#1A1814;padding:36px 44px;font-size:12px}.hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid #C9A84C;padding-bottom:18px;margin-bottom:24px}.hdr h1{font-size:24px;font-weight:700;color:#8B6914}.hdr p{font-size:11px;color:#A8A49C;margin-top:2px}.hdr-r .t{font-size:13px;font-weight:600;color:#8B6914}.hdr-r .d{font-size:11px;color:#A8A49C;margin-top:2px}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}.kpis2{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}.kpi{background:#F9F7F3;border:1px solid #E8D9A0;border-radius:8px;padding:14px;text-align:center}.kpi-v{font-size:22px;font-weight:700;color:#8B6914}.kpi-l{font-size:9px;color:#A8A49C;margin-top:3px;text-transform:uppercase;letter-spacing:.07em}.sec{margin-bottom:22px}.sec-t{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#A8A49C;border-bottom:1px solid #EDE8DC;padding-bottom:7px;margin-bottom:12px}.st-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.st-item{border-radius:7px;padding:10px;text-align:center}.st-v{font-size:20px;font-weight:700}.st-l{font-size:9px;color:#888;margin-top:2px;text-transform:uppercase;letter-spacing:.05em}.two{display:grid;grid-template-columns:1fr 1fr;gap:24px}.row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #F0EBE0}.rank{width:22px;height:22px;border-radius:5px;background:#F5F0E8;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#8B6914;flex-shrink:0}.nm{flex:1;font-size:11px;color:#1A1814;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bar-w{width:80px;height:5px;background:#F0EBE0;border-radius:3px;overflow:hidden;flex-shrink:0}.bar-f{height:100%;background:linear-gradient(90deg,#8B6914,#C9A84C);border-radius:3px}.cnt{font-size:11px;font-weight:700;color:#C9A84C;width:16px;text-align:right;flex-shrink:0}.ftr{margin-top:32px;padding-top:12px;border-top:1px solid #EDE8DC;display:flex;justify-content:space-between;font-size:10px;color:#A8A49C}.ftr span{color:#C9A84C;font-weight:600}.tip{position:fixed;top:0;left:0;right:0;background:#1a5276;color:#fff;padding:10px;text-align:center;font-size:13px;z-index:999}@media print{.tip{display:none}body{padding:20px 28px}@page{margin:.8cm;size:A4}}</style>';
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(20);
+    doc.setTextColor(...GOLD);
+    doc.text('MedLeads', margin, 12);
 
-  const body =
-    '<div class="tip">Para salvar como PDF: selecione <strong>"Salvar como PDF"</strong> no campo Destino/Impressora</div>'+
-    '<div class="hdr"><div><h1>MedLeads</h1><p>ISA Digital — Instituto Saber e Aprender</p></div>'+
-    '<div class="hdr-r"><div class="t">Relatório de Leads</div><div class="d">Gerado em '+hoje+'</div></div></div>'+
-    '<div class="kpis">'+
-    '<div class="kpi"><div class="kpi-v">'+total+'</div><div class="kpi-l">Total de Leads</div></div>'+
-    '<div class="kpi"><div class="kpi-v" style="color:#4CAF7A">'+conv.length+'</div><div class="kpi-l">Convertidos</div></div>'+
-    '<div class="kpi"><div class="kpi-v">R$ '+receita.toLocaleString('pt-BR')+'</div><div class="kpi-l">Receita Total</div></div>'+
-    '<div class="kpi"><div class="kpi-v" style="color:#4CAF7A">'+txConv+'%</div><div class="kpi-l">Taxa de Conversão</div></div>'+
-    '</div><div class="kpis2">'+
-    '<div class="kpi"><div class="kpi-v" style="color:#E8A94C">'+neg.length+'</div><div class="kpi-l">Em Negociação</div></div>'+
-    '<div class="kpi"><div class="kpi-v">R$ '+ticket.toLocaleString('pt-BR')+'</div><div class="kpi-l">Ticket Médio</div></div>'+
-    '<div class="kpi"><div class="kpi-v">'+scoreM+'/100</div><div class="kpi-l">Score Médio</div></div>'+
-    '</div>'+
-    '<div class="sec"><div class="sec-t">Status dos Leads</div><div class="st-grid">'+stHtml+'</div></div>'+
-    '<div class="two">'+
-    '<div class="sec"><div class="sec-t">Cursos Mais Procurados</div>'+curHtml+'</div>'+
-    '<div class="sec"><div class="sec-t">Origem dos Leads</div>'+origHtml+'</div>'+
-    '</div>'+
-    '<div class="ftr"><div>MedLeads CRM · ISA Digital</div><span>'+hoje+'</span></div>';
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...GRAY);
+    doc.text('ISA Digital — Instituto Saber e Aprender', margin, 19);
 
-  // Usar blob URL para evitar bloqueio de popup
-  var _d='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>MedLeads_'+hojeFile+'</title>'+css+'</head><body>'+body+'</body></html>';
-  var blob = new Blob([_d], {type:'text/html'});
-  var url  = URL.createObjectURL(blob);
-  var win  = window.open(url,'_blank');
-  if (!win) {
-    // Fallback: criar link de download
-    var a = document.createElement('a');
-    a.href = url;
-    a.target = '_blank';
-    a.click();
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...GOLD);
+    doc.text('Relatório de Leads', W-margin, 12, {align:'right'});
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...GRAY);
+    doc.text('Gerado em '+hoje, W-margin, 19, {align:'right'});
+    y = 36;
+
+    // ── KPIs ──
+    const kpis = [
+      {lbl:'Total de Leads', val:String(total), color:DARK},
+      {lbl:'Convertidos',    val:String(conv.length), color:GREEN},
+      {lbl:'Receita Total',  val:'R$ '+receita.toLocaleString('pt-BR'), color:GOLD_D},
+      {lbl:'Conversão',      val:txConv+'%', color:GREEN},
+    ];
+    const kw = (W-margin*2-9)/4;
+    kpis.forEach((k,i)=>{
+      const x = margin + i*(kw+3);
+      doc.setFillColor(...BG);
+      doc.roundedRect(x, y, kw, 20, 2, 2, 'F');
+      doc.setDrawColor(...GOLD);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(x, y, kw, 20, 2, 2, 'S');
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(14);
+      doc.setTextColor(...k.color);
+      doc.text(k.val, x+kw/2, y+12, {align:'center'});
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(7);
+      doc.setTextColor(...GRAY);
+      doc.text(k.lbl.toUpperCase(), x+kw/2, y+17, {align:'center'});
+    });
+    y += 24;
+
+    const kpis2 = [
+      {lbl:'Em Negociação', val:String(neg.length), color:ORANGE},
+      {lbl:'Ticket Médio',  val:'R$ '+ticket.toLocaleString('pt-BR'), color:GOLD_D},
+      {lbl:'Score Médio',   val:scoreM+'/100', color:DARK},
+    ];
+    const kw2 = (W-margin*2-6)/3;
+    kpis2.forEach((k,i)=>{
+      const x = margin + i*(kw2+3);
+      doc.setFillColor(...BG);
+      doc.roundedRect(x, y, kw2, 18, 2, 2, 'F');
+      doc.setDrawColor(...GOLD);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(x, y, kw2, 18, 2, 2, 'S');
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(13);
+      doc.setTextColor(...k.color);
+      doc.text(k.val, x+kw2/2, y+10, {align:'center'});
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(7);
+      doc.setTextColor(...GRAY);
+      doc.text(k.lbl.toUpperCase(), x+kw2/2, y+15, {align:'center'});
+    });
+    y += 24;
+
+    // ── STATUS ──
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(8);
+    doc.setTextColor(...GRAY);
+    doc.text('STATUS DOS LEADS', margin, y);
+    doc.setFillColor(...GOLD);
+    doc.rect(margin, y+1, 30, 0.4, 'F');
+    y += 6;
+
+    const stList = Object.entries(stCount).sort((a,b)=>b[1]-a[1]);
+    const sw = (W-margin*2-(stList.length-1)*3)/stList.length;
+    stList.forEach(([s,n],i)=>{
+      const x = margin + i*(sw+3);
+      const col = SC_COLORS[s]||GRAY;
+      doc.setFillColor(col[0], col[1], col[2], 0.1);
+      doc.setFillColor(Math.min(255,col[0]+160), Math.min(255,col[1]+160), Math.min(255,col[2]+160));
+      doc.roundedRect(x, y, sw, 16, 2, 2, 'F');
+      doc.setDrawColor(...col);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(x, y, sw, 16, 2, 2, 'S');
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(14);
+      doc.setTextColor(...col);
+      doc.text(String(n), x+sw/2, y+9, {align:'center'});
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(7);
+      doc.setTextColor(80,80,80);
+      doc.text(s, x+sw/2, y+14, {align:'center'});
+    });
+    y += 22;
+
+    // ── CURSOS + ORIGENS ──
+    const colW = (W-margin*2-8)/2;
+
+    // Cursos
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(8);
+    doc.setTextColor(...GRAY);
+    doc.text('CURSOS MAIS PROCURADOS', margin, y);
+    doc.text('ORIGEM DOS LEADS', margin+colW+8, y);
+    doc.setFillColor(...GOLD);
+    doc.rect(margin, y+1, 40, 0.4, 'F');
+    doc.rect(margin+colW+8, y+1, 30, 0.4, 'F');
+    y += 6;
+
+    topCursos.forEach(([c,n],i)=>{
+      const bw = Math.round(n/maxC*(colW-30));
+      const cy2 = y + i*9;
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(7);
+      doc.setTextColor(...DARK);
+      const label = c.length>28 ? c.substring(0,28)+'...' : c;
+      doc.text(label, margin, cy2+4);
+      doc.setFillColor(230,225,210);
+      doc.roundedRect(margin, cy2+5, colW-12, 4, 1, 1, 'F');
+      doc.setFillColor(...GOLD_D);
+      if(bw>0) doc.roundedRect(margin, cy2+5, bw, 4, 1, 1, 'F');
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(7);
+      doc.setTextColor(...GOLD_D);
+      doc.text(String(n), margin+colW-10, cy2+8, {align:'right'});
+    });
+
+    topOrigens.forEach(([o,n],i)=>{
+      const bw = Math.round(n/maxO*(colW-20));
+      const cy2 = y + i*9;
+      const ox = margin+colW+8;
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(7);
+      doc.setTextColor(...DARK);
+      doc.text(o.length>22?o.substring(0,22)+'...':o, ox, cy2+4);
+      doc.setFillColor(230,225,210);
+      doc.roundedRect(ox, cy2+5, colW-12, 4, 1, 1, 'F');
+      doc.setFillColor(...GOLD_D);
+      if(bw>0) doc.roundedRect(ox, cy2+5, bw, 4, 1, 1, 'F');
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(7);
+      doc.setTextColor(...GOLD_D);
+      doc.text(String(n), ox+colW-10, cy2+8, {align:'right'});
+    });
+
+    y += Math.max(topCursos.length, topOrigens.length)*9 + 6;
+
+    // ── RODAPÉ ──
+    doc.setFillColor(...GOLD);
+    doc.rect(0, 287, W, 0.5, 'F');
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...GRAY);
+    doc.text('MedLeads CRM · ISA Digital · Relatório gerado automaticamente em '+hoje, W/2, 292, {align:'center'});
+
+    // Salvar
+    doc.save('MedLeads_Relatorio_'+hoje.replace(/\//g,'-')+'.pdf');
+    showToast('✅ PDF salvo com sucesso!', 'success');
+
+  } catch(e) {
+    console.error(e);
+    showToast('Erro ao gerar PDF: '+e.message, 'error');
   }
-  setTimeout(function(){ URL.revokeObjectURL(url); }, 10000);
-  showToast('PDF aberto! Use Ctrl+P para imprimir/salvar.', 'success');
 };
 
 // ═══════════════════════════════════════════════

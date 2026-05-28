@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!-- build:20260528_205801-43ec44a1 -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -2850,8 +2850,14 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
       <!-- LINHA 1: KPIs -->
       <div id="relKpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px"></div>
 
-      <!-- LINHA 2: Donut + Especialidades (card unificado) + Origens -->
-      <div style="display:grid;grid-template-columns:320px 1fr;gap:16px;margin-bottom:16px">
+      <!-- LINHA 2: Cursos em barras verticais - largura total -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><span class="card-title">Cursos Mais Procurados</span></div>
+        <div class="card-body" id="cursosProgress"></div>
+      </div>
+
+      <!-- LINHA 3: Donut + Especialidades + Origens -->
+      <div style="display:grid;grid-template-columns:300px 1fr;gap:16px;margin-bottom:16px">
 
         <!-- Status + Especialidades unificados -->
         <div class="card">
@@ -2870,16 +2876,10 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
           </div>
         </div>
 
-        <!-- Cursos + Origens -->
-        <div style="display:flex;flex-direction:column;gap:16px">
-          <div class="card" style="flex:1">
-            <div class="card-header"><span class="card-title">Cursos Mais Procurados</span></div>
-            <div class="card-body" id="cursosProgress"></div>
-          </div>
-          <div class="card" style="flex:1">
-            <div class="card-header"><span class="card-title">Origem dos Leads</span></div>
-            <div class="card-body" id="origemProgress"></div>
-          </div>
+        <!-- Origens -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Origem dos Leads</span></div>
+          <div class="card-body" id="origemProgress"></div>
         </div>
       </div>
 
@@ -3888,25 +3888,21 @@ function renderRelatorios() {
   const ticket  = conv>0 ? Math.round(receita/conv) : 0;
   const txConv  = (conv/total*100).toFixed(1);
   const scoreM  = Math.round(leads.reduce((s,l)=>s+(l.score||0),0)/total);
-  const cols    = ['#C9A84C','#5B8DEF','#4CAF7A','#E8A94C','#9B59B6','#E05555','#5DADE2','#F39C12'];
 
   // ── KPIs ──
   const kpisEl = document.getElementById('relKpis');
   if (kpisEl) kpisEl.innerHTML = [
-    { lbl:'Total de Leads',    val:total,                                icon:'👥', color:'var(--text)' },
-    { lbl:'Convertidos',       val:conv,                                 icon:'✅', color:'var(--success)' },
-    { lbl:'Receita Total',     val:'R$ '+receita.toLocaleString('pt-BR'),icon:'💰', color:'var(--gold-light)' },
-    { lbl:'Taxa de Conversão', val:txConv+'%',                           icon:'📈', color:'var(--success)' },
-    { lbl:'Em Negociação',     val:neg,                                  icon:'💼', color:'var(--gold-light)' },
-    { lbl:'Ticket Médio',      val:'R$ '+ticket.toLocaleString('pt-BR'), icon:'🎯', color:'var(--text)' },
-    { lbl:'Score Médio',       val:scoreM+'/100',                        icon:'⭐', color:'var(--text)' },
-    { lbl:'Leads Perdidos',    val:counts['Perdido']||0,                 icon:'❌', color:'var(--danger)' },
+    { lbl:'Total de Leads',    val:total,                                 color:'var(--text)' },
+    { lbl:'Convertidos',       val:conv,                                  color:'var(--success)' },
+    { lbl:'Receita Total',     val:'R$ '+receita.toLocaleString('pt-BR'), color:'var(--gold-light)' },
+    { lbl:'Taxa de Conversão', val:txConv+'%',                            color:'var(--success)' },
+    { lbl:'Em Negociação',     val:neg,                                   color:'var(--gold-light)' },
+    { lbl:'Ticket Médio',      val:'R$ '+ticket.toLocaleString('pt-BR'),  color:'var(--text)' },
+    { lbl:'Score Médio',       val:scoreM+'/100',                         color:'var(--text)' },
+    { lbl:'Leads Perdidos',    val:counts['Perdido']||0,                  color:'var(--danger)' },
   ].map(k=>`
     <div class="card" style="padding:16px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
-        <span style="font-size:18px">${k.icon}</span>
-        <span style="font-family:var(--font-mono);font-size:20px;font-weight:600;color:${k.color}">${k.val}</span>
-      </div>
+      <div style="font-family:var(--font-mono);font-size:22px;font-weight:600;color:${k.color};margin-bottom:4px">${k.val}</div>
       <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em">${k.lbl}</div>
     </div>`).join('');
 
@@ -3934,7 +3930,7 @@ function renderRelatorios() {
         <span style="font-size:12px;color:var(--text)">${s}</span>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:60px;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden">
+        <div style="width:60px;height:3px;background:var(--bg3);border-radius:2px">
           <div style="height:100%;width:${Math.round(n/total*100)}%;background:${SC[s]};border-radius:2px"></div>
         </div>
         <span style="font-family:var(--font-mono);font-size:12px;font-weight:600;color:${SC[s]};width:16px;text-align:right">${n}</span>
@@ -3942,37 +3938,43 @@ function renderRelatorios() {
       </div>
     </div>`).join('');
 
-  // ── ESPECIALIDADES (compacto, pills) ──
+  // ── ESPECIALIDADES — monocromático dourado ──
   const specCnt={};
   leads.forEach(l=>{if(l.spec)specCnt[l.spec]=(specCnt[l.spec]||0)+1;});
-  document.getElementById('specialtyProgress').innerHTML =
-    '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
-    Object.entries(specCnt).sort((a,b)=>b[1]-a[1]).map(([s,n],i)=>`
-      <div style="background:${cols[i%cols.length]}18;border:1px solid ${cols[i%cols.length]}40;border-radius:20px;padding:5px 12px;display:flex;align-items:center;gap:6px">
-        <span style="font-size:12px;color:var(--text)">${s}</span>
-        <span style="font-size:11px;font-weight:700;color:${cols[i%cols.length]};font-family:var(--font-mono)">${n}</span>
-      </div>`).join('') + '</div>';
+  const specSorted = Object.entries(specCnt).sort((a,b)=>b[1]-a[1]);
+  const maxSp = specSorted[0]?.[1]||1;
+  document.getElementById('specialtyProgress').innerHTML = specSorted.map(([s,n])=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border2)">
+      <span style="font-size:12px;color:var(--text)">${s}</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:70px;height:3px;background:var(--bg3);border-radius:2px">
+          <div style="height:100%;width:${Math.round(n/maxSp*100)}%;background:var(--gold);border-radius:2px"></div>
+        </div>
+        <span style="font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--gold-light);width:16px;text-align:right">${n}</span>
+      </div>
+    </div>`).join('');
 
-  // ── CURSOS ──
+  // ── CURSOS — barras verticais largura total ──
   const ccCnt={};
   leads.forEach(l=>{if(l.curso)ccCnt[l.curso]=(ccCnt[l.curso]||0)+1;});
   const CS=Object.entries(ccCnt).sort((a,b)=>b[1]-a[1]);
   const maxC=CS[0]?.[1]||1;
-  document.getElementById('cursosProgress').innerHTML = CS.map(([c,n],i)=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border2)">
-      <div style="width:22px;height:22px;border-radius:6px;background:${cols[i%cols.length]}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <span style="font-size:10px;font-weight:700;color:${cols[i%cols.length]}">${i+1}</span>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px">${c}</div>
-        <div style="height:3px;background:var(--bg3);border-radius:2px">
-          <div style="height:100%;width:${Math.round(n/maxC*100)}%;background:${cols[i%cols.length]};border-radius:2px"></div>
-        </div>
-      </div>
-      <span style="font-family:var(--font-mono);font-size:13px;font-weight:600;color:${cols[i%cols.length]};flex-shrink:0">${n}</span>
-    </div>`).join('');
+  document.getElementById('cursosProgress').innerHTML = `
+    <div style="display:flex;align-items:flex-end;gap:8px;height:160px;padding:0 4px 0">
+      ${CS.map(([c,n],i)=>{
+        const pct=Math.round(n/maxC*100);
+        const label=c.length>14?c.substring(0,12)+'...':c;
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0;height:100%;justify-content:flex-end;min-width:0">
+          <div style="font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--gold-light);margin-bottom:4px">${n}</div>
+          <div style="width:100%;border-radius:4px 4px 0 0;background:linear-gradient(180deg,var(--gold-light),var(--gold-dark));height:${Math.max(6,pct)}%;min-height:6px;transition:height .8s ease"></div>
+          <div style="width:100%;height:2px;background:var(--gold)"></div>
+          <div style="font-size:9px;color:var(--text3);text-align:center;margin-top:6px;line-height:1.3;word-break:break-word">${label}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
 
-  // ── ORIGENS ──
+  // ── ORIGENS — dourado com ícones ──
   const ocCnt={};
   leads.forEach(l=>{if(l.origem)ocCnt[l.origem]=(ocCnt[l.origem]||0)+1;});
   const OS=Object.entries(ocCnt).sort((a,b)=>b[1]-a[1]);
@@ -3982,12 +3984,12 @@ function renderRelatorios() {
     <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border2)">
       <div style="width:28px;height:28px;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">${icons[o]||'📌'}</div>
       <div style="flex:1">
-        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
           <span style="font-size:12px;color:var(--text)">${o}</span>
           <span style="font-size:11px;color:var(--text3)">${Math.round(n/total*100)}%</span>
         </div>
-        <div style="height:4px;background:var(--bg3);border-radius:2px">
-          <div style="height:100%;width:${Math.round(n/maxO*100)}%;background:linear-gradient(90deg,var(--gold-dark),var(--gold-light));border-radius:2px"></div>
+        <div style="height:3px;background:var(--bg3);border-radius:2px">
+          <div style="height:100%;width:${Math.round(n/maxO*100)}%;background:var(--gold);border-radius:2px"></div>
         </div>
       </div>
       <span style="font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--gold-light);flex-shrink:0">${n}</span>
@@ -4599,52 +4601,60 @@ window.sendIA = async function() {
   document.getElementById('iaSuggestions').style.display = 'none';
 
   addIAMsg('user', q);
+  const loadDiv = addIAMsg('loading', '⏳ Consultando IA...');
 
-  // Loading
-  const loadDiv = addIAMsg('loading', '⏳ Analisando...');
-
-  // Contexto dos leads para o Claude
   const leadAtual = _iaLeadId ? leads.find(l => l.id === _iaLeadId) : null;
-  const statsCtx = `Pipeline MedLeads: ${leads.length} leads total, ${leads.filter(l=>l.status==='Convertido').length} convertidos, ${leads.filter(l=>l.status==='Negociando').length} negociando. Receita: R$ ${leads.filter(l=>l.status==='Convertido').reduce((s,l)=>s+(l.valor||0),0).toLocaleString('pt-BR')}.`;
-  const leadCtx = leadAtual ? `Lead atual: ${leadAtual.nome}, ${leadAtual.spec||'—'}, interesse em ${leadAtual.curso||'—'}, status ${leadAtual.status}, score ${leadAtual.score}/100, origem ${leadAtual.origem||'—'}, valor R$ ${leadAtual.valor||0}. Histórico: ${(leadAtual.hist||[]).slice(0,3).map(h=>h.acao).join('; ')}.` : '';
+  const total = leads.length;
+  const nConv = leads.filter(l=>l.status==='Convertido').length;
+  const nNeg  = leads.filter(l=>l.status==='Negociando').length;
+  const rec   = leads.filter(l=>l.status==='Convertido').reduce((s,l)=>s+(l.valor||0),0);
 
-  const systemPrompt = `Você é um assistente especializado em vendas de cursos médicos para a ISA Digital (Instituto Saber e Aprender), focada em ecocardiografia. Você conhece o CRM MedLeads e ajuda a equipe comercial a converter leads de médicos em matrículas.
+  const statsCtx = 'Pipeline: '+total+' leads, '+nConv+' convertidos, '+nNeg+' negociando. Receita: R$ '+rec.toLocaleString('pt-BR')+'.';
+  const leadCtx  = leadAtual
+    ? 'Lead selecionado: '+leadAtual.nome+' | '+( leadAtual.spec||'—')+' | Curso: '+(leadAtual.curso||'—')+' | Status: '+leadAtual.status+' | Score: '+leadAtual.score+'/100 | Origem: '+(leadAtual.origem||'—')+'.'
+    : '';
 
-Contexto da empresa: ISA Digital oferece cursos de Ecocardiografia (Básico, Avançado, Fetal, 3D, Doppler Tecidual), Eco Estresse Elite, EcoVision Training, Bastidores da Prova de Título, Mentoria com Dra. Ana Camarozano e Assinatura Ecoinsights.
+  const systemMsg = 'Você é um assistente de vendas especializado em cursos médicos da ISA Digital (Instituto Saber e Aprender), focada em ecocardiografia. Ajuda a equipe a converter leads de médicos em matrículas. Cursos: Ecocardiografia Básico/Avançado/Fetal/3D, Doppler Tecidual, Eco Estresse Elite, EcoVision Training, Bastidores da Prova de Título, Mentoria com Dra. Ana Camarozano. '+statsCtx+' '+leadCtx+' Responda em português, seja direto e prático. Máx 250 palavras.';
 
-${statsCtx}
-${leadCtx}
+  const contents = [
+    {role:'user',   parts:[{text: systemMsg}]},
+    {role:'model',  parts:[{text: 'Entendido! Pronto para ajudar com as vendas da ISA Digital.'}]}
+  ];
 
-Responda em português brasileiro, seja direto e prático. Use formatação simples. Quando sugerir mensagens de WhatsApp, use o formato adequado para mensagem de texto.`;
-
-  _iaHistory.push({ role: 'user', content: q });
+  _iaHistory.slice(-8).forEach(m => {
+    contents.push({
+      role:  m.role === 'user' ? 'user' : 'model',
+      parts: [{text: m.content}]
+    });
+  });
+  contents.push({role:'user', parts:[{text: q}]});
 
   try {
-    // Usar Cloudflare Worker como proxy para a API do Claude
-    const resp = await fetch('https://medleads-ai.eduardomachado.workers.dev/', {
+    const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyCvn2xqi_FmJrrXk_ss1udf9yOE0NhDxtY', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        system: systemPrompt,
-        messages: _iaHistory
+        contents: contents,
+        generationConfig: { temperature: 0.7, maxOutputTokens: 600 }
       })
     });
 
-    if (!resp.ok) throw new Error('Servidor IA indisponível');
-
     const data = await resp.json();
-    const text = data.content?.[0]?.text || data.text || 'Erro ao processar resposta.';
+    if (!resp.ok) throw new Error(data.error?.message || 'Erro '+resp.status);
 
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sem resposta.';
     loadDiv.remove();
     addIAMsg('ai', text);
-    _iaHistory.push({ role: 'assistant', content: text });
+    _iaHistory.push({role:'user', content:q});
+    _iaHistory.push({role:'assistant', content:text});
+    if (_iaHistory.length > 12) _iaHistory = _iaHistory.slice(-12);
 
   } catch(e) {
     loadDiv.remove();
-    // Fallback: resposta local baseada em regras
-    const respLocal = gerarRespostaLocal(q, leadAtual);
-    addIAMsg('ai', respLocal);
-    _iaHistory.push({ role: 'assistant', content: respLocal });
+    const local = gerarRespostaLocal(q, leadAtual);
+    addIAMsg('ai', local);
+    _iaHistory.push({role:'user', content:q});
+    _iaHistory.push({role:'assistant', content:local});
   }
 
   document.getElementById('iaSendBtn').disabled = false;
@@ -5218,226 +5228,174 @@ window.downloadQR = function() {
 // ═══════════════════════════════════════════════
 window.exportPDF = function() {
   showToast('Gerando PDF...', 'success');
-
   try {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
     const hoje = new Date().toLocaleDateString('pt-BR');
-    const W = 210; // largura A4
-    const margin = 16;
-    let y = 0;
+    const W=210, M=14;
 
-    // Cores
-    const GOLD    = [201, 168, 76];
-    const GOLD_D  = [139, 105, 20];
-    const DARK    = [26, 24, 20];
-    const GRAY    = [168, 164, 156];
-    const WHITE   = [255, 255, 255];
-    const GREEN   = [76, 175, 122];
-    const BLUE    = [91, 141, 239];
-    const ORANGE  = [232, 169, 76];
-    const RED     = [224, 85, 85];
-    const BG      = [249, 247, 243];
-
-    const SC_COLORS = {
-      Novo: BLUE, Contato: ORANGE, Negociando: GOLD,
-      Convertido: GREEN, Perdido: RED
-    };
-
-    // Dados
     const total   = leads.length;
     const conv    = leads.filter(l=>l.status==='Convertido');
     const neg     = leads.filter(l=>l.status==='Negociando');
     const receita = conv.reduce((s,l)=>s+(l.valor||0),0);
-    const ticket  = conv.length>0 ? Math.round(receita/conv.length) : 0;
-    const txConv  = total>0 ? (conv.length/total*100).toFixed(1) : 0;
+    const ticket  = conv.length>0?Math.round(receita/conv.length):0;
+    const txConv  = total>0?(conv.length/total*100).toFixed(1):0;
     const scoreM  = Math.round(leads.reduce((s,l)=>s+(l.score||0),0)/(total||1));
 
-    const stCount = {}, ccCount = {}, ocCount = {};
+    const stCnt={}, ccCnt={}, ocCnt={}, spCnt={};
     leads.forEach(l=>{
-      stCount[l.status]=(stCount[l.status]||0)+1;
-      if(l.curso)  ccCount[l.curso]=(ccCount[l.curso]||0)+1;
-      if(l.origem) ocCount[l.origem]=(ocCount[l.origem]||0)+1;
+      stCnt[l.status]=(stCnt[l.status]||0)+1;
+      if(l.curso)  ccCnt[l.curso]=(ccCnt[l.curso]||0)+1;
+      if(l.origem) ocCnt[l.origem]=(ocCnt[l.origem]||0)+1;
+      if(l.spec)   spCnt[l.spec]=(spCnt[l.spec]||0)+1;
     });
-    const topCursos  = Object.entries(ccCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
-    const topOrigens = Object.entries(ocCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
-    const maxC = topCursos[0]?.[1]||1;
-    const maxO = topOrigens[0]?.[1]||1;
 
-    // ── CABEÇALHO ──
-    doc.setFillColor(...DARK);
-    doc.rect(0, 0, W, 28, 'F');
-    doc.setFillColor(...GOLD);
-    doc.rect(0, 27, W, 1, 'F');
+    const topC=Object.entries(ccCnt).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    const topO=Object.entries(ocCnt).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const topS=Object.entries(spCnt).sort((a,b)=>b[1]-a[1]);
+    const maxC=topC[0]?.[1]||1;
+    const maxO=topO[0]?.[1]||1;
+    const maxS=topS[0]?.[1]||1;
 
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(20);
-    doc.setTextColor(...GOLD);
-    doc.text('MedLeads', margin, 12);
+    // Paleta monocromática
+    const GOLD=[201,168,76], GOLD_D=[139,105,20], GOLD_L=[232,201,122];
+    const DARK=[26,24,20], GRAY=[168,164,156], BG=[249,247,243], BG2=[237,232,218];
+    const SC_C={Novo:[91,141,239],Contato:[232,169,76],Negociando:[201,168,76],Convertido:[76,175,122],Perdido:[224,85,85]};
 
-    doc.setFont('helvetica','normal');
-    doc.setFontSize(9);
-    doc.setTextColor(...GRAY);
-    doc.text('ISA Digital — Instituto Saber e Aprender', margin, 19);
+    let y=0;
 
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(11);
-    doc.setTextColor(...GOLD);
-    doc.text('Relatório de Leads', W-margin, 12, {align:'right'});
-    doc.setFont('helvetica','normal');
-    doc.setFontSize(8);
-    doc.setTextColor(...GRAY);
-    doc.text('Gerado em '+hoje, W-margin, 19, {align:'right'});
-    y = 36;
+    // HEADER
+    doc.setFillColor(...DARK); doc.rect(0,0,W,26,'F');
+    doc.setFillColor(...GOLD); doc.rect(0,25.5,W,1,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(20); doc.setTextColor(...GOLD);
+    doc.text('MedLeads',M,11);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...GRAY);
+    doc.text('ISA Digital — Instituto Saber e Aprender',M,18);
+    doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...GOLD);
+    doc.text('Relatório de Leads',W-M,11,{align:'right'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...GRAY);
+    doc.text('Gerado em '+hoje,W-M,18,{align:'right'});
+    y=32;
 
-    // ── KPIs ──
-    const kpis = [
-      {lbl:'Total de Leads', val:String(total), color:DARK},
-      {lbl:'Convertidos',    val:String(conv.length), color:GREEN},
-      {lbl:'Receita Total',  val:'R$ '+receita.toLocaleString('pt-BR'), color:GOLD_D},
-      {lbl:'Conversão',      val:txConv+'%', color:GREEN},
+    // KPIs linha 1
+    const kpis1=[
+      {l:'Total de Leads',v:String(total),c:DARK},
+      {l:'Convertidos',v:String(conv.length),c:[76,175,122]},
+      {l:'Receita Total',v:'R$ '+receita.toLocaleString('pt-BR'),c:GOLD_D},
+      {l:'Conversão',v:txConv+'%',c:[76,175,122]},
     ];
-    const kw = (W-margin*2-9)/4;
-    kpis.forEach((k,i)=>{
-      const x = margin + i*(kw+3);
-      doc.setFillColor(...BG);
-      doc.roundedRect(x, y, kw, 20, 2, 2, 'F');
-      doc.setDrawColor(...GOLD);
-      doc.setLineWidth(0.3);
-      doc.roundedRect(x, y, kw, 20, 2, 2, 'S');
-      doc.setFont('helvetica','bold');
-      doc.setFontSize(14);
-      doc.setTextColor(...k.color);
-      doc.text(k.val, x+kw/2, y+12, {align:'center'});
-      doc.setFont('helvetica','normal');
-      doc.setFontSize(7);
-      doc.setTextColor(...GRAY);
-      doc.text(k.lbl.toUpperCase(), x+kw/2, y+17, {align:'center'});
+    const kw1=(W-M*2-9)/4;
+    kpis1.forEach((k,i)=>{
+      const x=M+i*(kw1+3);
+      doc.setFillColor(...BG); doc.roundedRect(x,y,kw1,18,2,2,'F');
+      doc.setDrawColor(...GOLD); doc.setLineWidth(0.3); doc.roundedRect(x,y,kw1,18,2,2,'S');
+      doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(...k.c);
+      doc.text(k.v,x+kw1/2,y+10,{align:'center'});
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...GRAY);
+      doc.text(k.l.toUpperCase(),x+kw1/2,y+15,{align:'center'});
     });
-    y += 24;
+    y+=22;
 
-    const kpis2 = [
-      {lbl:'Em Negociação', val:String(neg.length), color:ORANGE},
-      {lbl:'Ticket Médio',  val:'R$ '+ticket.toLocaleString('pt-BR'), color:GOLD_D},
-      {lbl:'Score Médio',   val:scoreM+'/100', color:DARK},
+    // KPIs linha 2
+    const kpis2=[
+      {l:'Em Negociação',v:String(neg.length),c:GOLD_D},
+      {l:'Ticket Médio',v:'R$ '+ticket.toLocaleString('pt-BR'),c:GOLD_D},
+      {l:'Score Médio',v:scoreM+'/100',c:DARK},
     ];
-    const kw2 = (W-margin*2-6)/3;
+    const kw2=(W-M*2-6)/3;
     kpis2.forEach((k,i)=>{
-      const x = margin + i*(kw2+3);
-      doc.setFillColor(...BG);
-      doc.roundedRect(x, y, kw2, 18, 2, 2, 'F');
-      doc.setDrawColor(...GOLD);
-      doc.setLineWidth(0.3);
-      doc.roundedRect(x, y, kw2, 18, 2, 2, 'S');
-      doc.setFont('helvetica','bold');
-      doc.setFontSize(13);
-      doc.setTextColor(...k.color);
-      doc.text(k.val, x+kw2/2, y+10, {align:'center'});
-      doc.setFont('helvetica','normal');
-      doc.setFontSize(7);
-      doc.setTextColor(...GRAY);
-      doc.text(k.lbl.toUpperCase(), x+kw2/2, y+15, {align:'center'});
+      const x=M+i*(kw2+3);
+      doc.setFillColor(...BG); doc.roundedRect(x,y,kw2,16,2,2,'F');
+      doc.setDrawColor(...GOLD); doc.setLineWidth(0.3); doc.roundedRect(x,y,kw2,16,2,2,'S');
+      doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...k.c);
+      doc.text(k.v,x+kw2/2,y+9,{align:'center'});
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...GRAY);
+      doc.text(k.l.toUpperCase(),x+kw2/2,y+13,{align:'center'});
     });
-    y += 24;
+    y+=20;
 
-    // ── STATUS ──
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(8);
-    doc.setTextColor(...GRAY);
-    doc.text('STATUS DOS LEADS', margin, y);
-    doc.setFillColor(...GOLD);
-    doc.rect(margin, y+1, 30, 0.4, 'F');
-    y += 6;
-
-    const stList = Object.entries(stCount).sort((a,b)=>b[1]-a[1]);
-    const sw = (W-margin*2-(stList.length-1)*3)/stList.length;
+    // STATUS
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...GRAY);
+    doc.text('STATUS DOS LEADS',M,y);
+    doc.setFillColor(...GOLD); doc.rect(M,y+1,28,0.4,'F');
+    y+=5;
+    const stList=Object.entries(stCnt).sort((a,b)=>b[1]-a[1]);
+    const sw=(W-M*2-(stList.length-1)*3)/stList.length;
     stList.forEach(([s,n],i)=>{
-      const x = margin + i*(sw+3);
-      const col = SC_COLORS[s]||GRAY;
-      doc.setFillColor(col[0], col[1], col[2], 0.1);
-      doc.setFillColor(Math.min(255,col[0]+160), Math.min(255,col[1]+160), Math.min(255,col[2]+160));
-      doc.roundedRect(x, y, sw, 16, 2, 2, 'F');
-      doc.setDrawColor(...col);
-      doc.setLineWidth(0.5);
-      doc.roundedRect(x, y, sw, 16, 2, 2, 'S');
-      doc.setFont('helvetica','bold');
-      doc.setFontSize(14);
-      doc.setTextColor(...col);
-      doc.text(String(n), x+sw/2, y+9, {align:'center'});
-      doc.setFont('helvetica','normal');
-      doc.setFontSize(7);
-      doc.setTextColor(80,80,80);
-      doc.text(s, x+sw/2, y+14, {align:'center'});
+      const x=M+i*(sw+3);
+      const col=SC_C[s]||GRAY;
+      const bg=[Math.min(255,col[0]+150),Math.min(255,col[1]+150),Math.min(255,col[2]+150)];
+      doc.setFillColor(...bg); doc.roundedRect(x,y,sw,15,2,2,'F');
+      doc.setDrawColor(...col); doc.setLineWidth(0.4); doc.roundedRect(x,y,sw,15,2,2,'S');
+      doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(...col);
+      doc.text(String(n),x+sw/2,y+8,{align:'center'});
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(80,80,80);
+      doc.text(s,x+sw/2,y+13,{align:'center'});
     });
-    y += 22;
+    y+=19;
 
-    // ── CURSOS + ORIGENS ──
-    const colW = (W-margin*2-8)/2;
+    // ESPECIALIDADES
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...GRAY);
+    doc.text('ESPECIALIDADES',M,y);
+    doc.setFillColor(...GOLD); doc.rect(M,y+1,22,0.4,'F');
+    y+=6;
+    topS.forEach(([s,n],i)=>{
+      const bw=Math.round(n/maxS*(W-M*2-20));
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...DARK);
+      doc.text(s,M,y+3);
+      doc.setFillColor(...BG2); doc.roundedRect(M,y+4,W-M*2-8,3,1,1,'F');
+      doc.setFillColor(...GOLD_D); if(bw>0) doc.roundedRect(M,y+4,bw,3,1,1,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(...GOLD_D);
+      doc.text(String(n),W-M-2,y+6.5,{align:'right'});
+      y+=9;
+    });
+    y+=4;
 
-    // Cursos
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(8);
-    doc.setTextColor(...GRAY);
-    doc.text('CURSOS MAIS PROCURADOS', margin, y);
-    doc.text('ORIGEM DOS LEADS', margin+colW+8, y);
+    // CURSOS + ORIGENS
+    const cW=(W-M*2-8)/2;
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...GRAY);
+    doc.text('CURSOS MAIS PROCURADOS',M,y);
+    doc.text('ORIGEM DOS LEADS',M+cW+8,y);
     doc.setFillColor(...GOLD);
-    doc.rect(margin, y+1, 40, 0.4, 'F');
-    doc.rect(margin+colW+8, y+1, 30, 0.4, 'F');
-    y += 6;
+    doc.rect(M,y+1,38,0.4,'F');
+    doc.rect(M+cW+8,y+1,28,0.4,'F');
+    y+=6;
 
-    topCursos.forEach(([c,n],i)=>{
-      const bw = Math.round(n/maxC*(colW-30));
-      const cy2 = y + i*9;
-      doc.setFont('helvetica','normal');
-      doc.setFontSize(7);
-      doc.setTextColor(...DARK);
-      const label = c.length>28 ? c.substring(0,28)+'...' : c;
-      doc.text(label, margin, cy2+4);
-      doc.setFillColor(230,225,210);
-      doc.roundedRect(margin, cy2+5, colW-12, 4, 1, 1, 'F');
-      doc.setFillColor(...GOLD_D);
-      if(bw>0) doc.roundedRect(margin, cy2+5, bw, 4, 1, 1, 'F');
-      doc.setFont('helvetica','bold');
-      doc.setFontSize(7);
-      doc.setTextColor(...GOLD_D);
-      doc.text(String(n), margin+colW-10, cy2+8, {align:'right'});
+    topC.forEach(([c,n],i)=>{
+      const bw=Math.round(n/maxC*(cW-18));
+      const ry=y+i*9;
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...DARK);
+      doc.text((i+1)+'.',M,ry+4);
+      doc.text(c.length>26?c.substring(0,26)+'...':c,M+5,ry+4);
+      doc.setFillColor(...BG2); doc.roundedRect(M,ry+5,cW-12,3,1,1,'F');
+      doc.setFillColor(...GOLD_D); if(bw>0) doc.roundedRect(M,ry+5,bw,3,1,1,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(...GOLD_D);
+      doc.text(String(n),M+cW-8,ry+7.5,{align:'right'});
     });
 
-    topOrigens.forEach(([o,n],i)=>{
-      const bw = Math.round(n/maxO*(colW-20));
-      const cy2 = y + i*9;
-      const ox = margin+colW+8;
-      doc.setFont('helvetica','normal');
-      doc.setFontSize(7);
-      doc.setTextColor(...DARK);
-      doc.text(o.length>22?o.substring(0,22)+'...':o, ox, cy2+4);
-      doc.setFillColor(230,225,210);
-      doc.roundedRect(ox, cy2+5, colW-12, 4, 1, 1, 'F');
-      doc.setFillColor(...GOLD_D);
-      if(bw>0) doc.roundedRect(ox, cy2+5, bw, 4, 1, 1, 'F');
-      doc.setFont('helvetica','bold');
-      doc.setFontSize(7);
-      doc.setTextColor(...GOLD_D);
-      doc.text(String(n), ox+colW-10, cy2+8, {align:'right'});
+    topO.forEach(([o,n],i)=>{
+      const bw=Math.round(n/maxO*(cW-16));
+      const ox=M+cW+8; const ry=y+i*9;
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...DARK);
+      doc.text(o.length>22?o.substring(0,22)+'...':o,ox,ry+4);
+      doc.setFillColor(...BG2); doc.roundedRect(ox,ry+5,cW-12,3,1,1,'F');
+      doc.setFillColor(...GOLD_D); if(bw>0) doc.roundedRect(ox,ry+5,bw,3,1,1,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(...GOLD_D);
+      doc.text(Math.round(n/total*100)+'%  '+n,ox+cW-8,ry+7.5,{align:'right'});
     });
 
-    y += Math.max(topCursos.length, topOrigens.length)*9 + 6;
+    // FOOTER
+    doc.setFillColor(...GOLD); doc.rect(0,287,W,0.6,'F');
+    doc.setFillColor(...DARK); doc.rect(0,287.6,W,9.4,'F');
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...GRAY);
+    doc.text('MedLeads CRM  ·  ISA Digital  ·  '+hoje,W/2,293,{align:'center'});
 
-    // ── RODAPÉ ──
-    doc.setFillColor(...GOLD);
-    doc.rect(0, 287, W, 0.5, 'F');
-    doc.setFont('helvetica','normal');
-    doc.setFontSize(7);
-    doc.setTextColor(...GRAY);
-    doc.text('MedLeads CRM · ISA Digital · Relatório gerado automaticamente em '+hoje, W/2, 292, {align:'center'});
-
-    // Salvar
-    doc.save('MedLeads_Relatorio_'+hoje.replace(/\//g,'-')+'.pdf');
-    showToast('✅ PDF salvo com sucesso!', 'success');
+    doc.save('MedLeads_Relatorio_'+hoje.split('/').join('-')+'.pdf');
+    showToast('✅ PDF salvo!', 'success');
 
   } catch(e) {
     console.error(e);
-    showToast('Erro ao gerar PDF: '+e.message, 'error');
+    showToast('Erro: '+e.message,'error');
   }
 };
 

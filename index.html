@@ -5469,51 +5469,6 @@ window.runGlobalSearch = function(q) {
 
 // ═══════════════════════════════════════════════
 //  TEMPLATES DE MENSAGEM
-// ═══════════════════════════════════════════════
-const DEFAULT_TEMPLATES = [
-  { id:1, nome:'Primeiro contato', tag:'Novo', tagColor:'#5B8DEF', texto:'Olá {{nome}}! Tudo bem? 😊\n\nSou da equipe ISA Digital e vi que você tem interesse no *{{curso}}*.\n\nPosso te passar mais detalhes?' },
-  { id:2, nome:'Follow-up', tag:'Contato', tagColor:'#E8A94C', texto:'Olá {{nome}}, tudo bem? 👋\n\nPassando para dar continuidade sobre o *{{curso}}*.\n\nEstou à disposição!' },
-  { id:3, nome:'Proposta de fechamento', tag:'Negociando', tagColor:'#C9A84C', texto:'{{nome}}, temos uma condição especial para você! 🎯\n\nO *{{curso}}* está com turma abrindo em breve. Podemos garantir sua vaga agora?\n\nPodemos fechar hoje?' },
-  { id:4, nome:'Reativação', tag:'Perdido', tagColor:'#E05555', texto:'Olá {{nome}}! Temos novidades no *{{curso}}* que podem te interessar.\n\nTem 5 minutinhos?' },
-  { id:5, nome:'Pós-matrícula', tag:'Convertido', tagColor:'#4CAF7A', texto:'Parabéns, {{nome}}! 🎉\n\nSua matrícula no *{{curso}}* foi confirmada! Em breve você receberá as informações de acesso.' },
-];
-let _templates = JSON.parse(localStorage.getItem('medleads_templates') || 'null') || DEFAULT_TEMPLATES;
-let _templateLeadId = null;
-function saveTemplates() { localStorage.setItem('medleads_templates', JSON.stringify(_templates)); }
-window.openTemplatesForLead = function() {
-  _templateLeadId = currentDrawerLeadId;
-  renderTemplatesList();
-  document.getElementById('templatesModal').classList.add('open');
-};
-window.closeTemplates = function() { document.getElementById('templatesModal').classList.remove('open'); };
-function renderTemplatesList() {
-  document.getElementById('templatesList').innerHTML = _templates.map(t =>
-    `<div class="template-item" onclick="useTemplate(${t.id})"><span class="template-tag" style="background:${t.tagColor}22;color:${t.tagColor}">${t.tag}</span><div class="template-name">${t.nome}</div><div class="template-preview">${t.texto.replace(/\n/g,' ').substring(0,80)}...</div></div>`
-  ).join('');
-}
-window.useTemplate = function(id) {
-  const t = _templates.find(x => x.id === id);
-  if (!t) return;
-  const l = _templateLeadId ? leads.find(x => x.id === _templateLeadId) : null;
-  let msg = t.texto;
-  if (l) {
-    const primeiro = l.nome.replace(/^Dr[a]?\.?\s*/i,'').split(' ')[0];
-    msg = msg.replace(/{{nome}}/g, primeiro).replace(/{{curso}}/g, l.curso||'nossos cursos');
-  }
-  closeTemplates();
-  if (l && l.whats) {
-    const num = l.whats.replace(/\D/g,'');
-    window.open('https://wa.me/' + (num.startsWith('55')?num:'55'+num) + '?text=' + encodeURIComponent(msg), '_blank');
-  } else {
-    navigator.clipboard.writeText(msg).then(() => showToast('Template copiado!', 'success'));
-  }
-};
-window.novoTemplate = function() {
-  const nome = prompt('Nome do template:'); if (!nome) return;
-  const texto = prompt('Texto (use {{nome}} e {{curso}}):'); if (!texto) return;
-  _templates.push({ id: Date.now(), nome, tag: 'Geral', tagColor: '#C9A84C', texto });
-  saveTemplates(); renderTemplatesList(); showToast('Template criado!', 'success');
-};
 </script>
 </body>
 </html>

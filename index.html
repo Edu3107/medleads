@@ -1332,7 +1332,7 @@ tbody tr:hover { background: var(--bg3); }
   .main-content { margin-left: 0; }
   .metrics-grid { grid-template-columns: 1fr 1fr; }
   .dashboard-grid { grid-template-columns: 1fr; }
-  .reports-grid { grid-template-columns: 1fr; }
+  #relKpis { grid-template-columns: 1fr 1fr!important; }
   .topbar { padding: 0 16px; }
   .topbar-title { font-size: 17px; }
   .page-content { padding: 16px; }
@@ -2843,46 +2843,42 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
 
     <!-- RELATÓRIOS -->
     <section class="page-content" id="page-relatorios">
-      <div class="reports-grid">
-        <div class="report-card">
+
+      <!-- LINHA 1: KPIs + Donut -->
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;margin-bottom:20px">
+
+        <!-- KPIs -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px" id="relKpis"></div>
+          <div class="card" style="flex:1">
+            <div class="card-header"><span class="card-title">Cursos Mais Procurados</span></div>
+            <div class="card-body" id="cursosProgress"></div>
+          </div>
+        </div>
+
+        <!-- Donut Status -->
+        <div class="card">
           <div class="card-header">
             <span class="card-title">Status dos Leads</span>
           </div>
-          <div class="card-body">
-            <div class="donut-wrap">
-              <svg class="donut-svg" width="110" height="110" viewBox="0 0 110 110" id="donutChart">
-                <circle cx="55" cy="55" r="40" fill="none" stroke="var(--bg3)" stroke-width="18"/>
-              </svg>
-              <div class="donut-legend" id="donutLegend"></div>
-            </div>
+          <div class="card-body" style="display:flex;flex-direction:column;align-items:center">
+            <svg width="140" height="140" viewBox="0 0 140 140" id="donutChart" style="margin-bottom:16px">
+              <circle cx="70" cy="70" r="52" fill="none" stroke="var(--bg3)" stroke-width="16"/>
+            </svg>
+            <div id="donutLegend" style="width:100%"></div>
           </div>
         </div>
+      </div>
 
-        <div class="report-card">
-          <div class="card-header">
-            <span class="card-title">Cursos Mais Procurados</span>
-          </div>
-          <div class="card-body">
-            <div class="progress-list" id="cursosProgress"></div>
-          </div>
+      <!-- LINHA 2: Especialidades + Origens -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Especialidades</span></div>
+          <div class="card-body" id="specialtyProgress"></div>
         </div>
-
-        <div class="report-card">
-          <div class="card-header">
-            <span class="card-title">Especialidades dos Leads</span>
-          </div>
-          <div class="card-body">
-            <div class="progress-list" id="specialtyProgress"></div>
-          </div>
-        </div>
-
-        <div class="report-card">
-          <div class="card-header">
-            <span class="card-title">Origem dos Leads</span>
-          </div>
-          <div class="card-body">
-            <div class="progress-list" id="origemProgress"></div>
-          </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Origem dos Leads</span></div>
+          <div class="card-body" id="origemProgress"></div>
         </div>
       </div>
 
@@ -3881,114 +3877,117 @@ function renderKanban() {
 //  RELATÓRIOS
 // ═══════════════════════════════════════════════
 function renderRelatorios() {
-  const statusColors = { Novo:'#5B8DEF', Contato:'#E8A94C', Negociando:'#C9A84C', Convertido:'#4CAF7A', Perdido:'#E05555' };
+  const SC = { Novo:'#5B8DEF', Contato:'#E8A94C', Negociando:'#C9A84C', Convertido:'#4CAF7A', Perdido:'#E05555' };
   const counts = {};
-  leads.forEach(l => { counts[l.status] = (counts[l.status]||0) + 1; });
+  leads.forEach(l => { counts[l.status] = (counts[l.status]||0)+1; });
   const total = leads.length || 1;
+  const conv  = counts['Convertido'] || 0;
+  const neg   = counts['Negociando'] || 0;
+  const receita = leads.filter(l=>l.status==='Convertido').reduce((s,l)=>s+(l.valor||0),0);
+  const ticket  = conv > 0 ? Math.round(receita/conv) : 0;
+  const txConv  = (conv/total*100).toFixed(1);
+  const scoreM  = Math.round(leads.reduce((s,l)=>s+(l.score||0),0)/total);
 
-  // ── DONUT MELHORADO com texto central ──
+  // KPIs
+  const kpisEl = document.getElementById('relKpis');
+  if (kpisEl) kpisEl.innerHTML = [
+    { lbl:'Total de Leads',     val:total,                            color:'var(--text)',       icon:'👥' },
+    { lbl:'Convertidos',        val:conv,                             color:'var(--success)',    icon:'✅' },
+    { lbl:'Receita Total',      val:'R$ '+receita.toLocaleString('pt-BR'), color:'var(--gold-light)', icon:'💰' },
+    { lbl:'Taxa de Conversão',  val:txConv+'%',                       color:'var(--success)',    icon:'📈' },
+  ].map(k => `
+    <div class="card" style="padding:18px">
+      <div style="font-size:20px;margin-bottom:8px">${k.icon}</div>
+      <div style="font-family:var(--font-mono);font-size:22px;font-weight:500;color:${k.color}">${k.val}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;text-transform:uppercase;letter-spacing:.08em">${k.lbl}</div>
+    </div>`).join('');
+
+  // Donut melhorado
   const svg = document.getElementById('donutChart');
-  const r = 40, cx = 55, cy = 55, circumference = 2 * Math.PI * r;
-  let offset = 0;
-  let donutSegments = '';
-  const conv = counts['Convertido'] || 0;
-  const txConv = Math.round(conv/total*100);
-
-  Object.entries(counts).forEach(([status, count]) => {
-    const pct = count / total;
-    const dash = pct * circumference;
-    donutSegments += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${statusColors[status]||'#888'}"
-      stroke-width="14" stroke-dasharray="${dash} ${circumference-dash}"
-      stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"
-      style="transition:stroke-dasharray .8s ease"/>`;
-    offset += dash;
+  const cx=70, cy=70, r=52, circ=2*Math.PI*r;
+  let off=0, segs='';
+  Object.entries(counts).forEach(([s,n]) => {
+    const dash=n/total*circ;
+    segs+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${SC[s]||'#888'}" stroke-width="14"
+      stroke-dasharray="${dash} ${circ-dash}" stroke-dashoffset="${-off}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    off+=dash;
   });
+  svg.innerHTML = segs +
+    `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="transparent" stroke-width="14"/>
+     <text x="${cx}" y="${cy-8}" text-anchor="middle" font-family="var(--font-mono)" font-size="16" font-weight="600" fill="var(--gold-light)">${txConv}%</text>
+     <text x="${cx}" y="${cy+8}" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="var(--text3)">conversão</text>`;
 
-  svg.innerHTML = `
-    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--bg3)" stroke-width="14"/>
-    ${donutSegments}
-    <text x="${cx}" y="${cy-6}" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" font-weight="600" fill="var(--gold-light)">${txConv}%</text>
-    <text x="${cx}" y="${cy+10}" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="8" fill="var(--text3)">conversão</text>`;
-
-  // Legenda com barras de progresso
+  // Legenda donut com mini barras
   document.getElementById('donutLegend').innerHTML = Object.entries(counts)
-    .sort((a,b)=>b[1]-a[1])
-    .map(([s,c]) => `
+    .sort((a,b)=>b[1]-a[1]).map(([s,n]) => `
     <div style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div style="width:8px;height:8px;border-radius:50%;background:${statusColors[s]};flex-shrink:0"></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <div style="display:flex;align-items:center;gap:7px">
+          <div style="width:8px;height:8px;border-radius:50%;background:${SC[s]};flex-shrink:0"></div>
           <span style="font-size:13px;color:var(--text)">${s}</span>
         </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-family:var(--font-mono);font-size:13px;font-weight:600;color:${statusColors[s]}">${c}</span>
-          <span style="font-size:11px;color:var(--text3)">${Math.round(c/total*100)}%</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:13px;font-weight:600;color:${SC[s]};font-family:var(--font-mono)">${n}</span>
+          <span style="font-size:10px;color:var(--text3);width:28px;text-align:right">${Math.round(n/total*100)}%</span>
         </div>
       </div>
-      <div style="height:3px;background:var(--bg3);border-radius:2px;overflow:hidden">
-        <div style="height:100%;width:${Math.round(c/total*100)}%;background:${statusColors[s]};border-radius:2px;transition:width 1s ease"></div>
+      <div style="height:3px;background:var(--bg3);border-radius:2px">
+        <div style="height:100%;width:${Math.round(n/total*100)}%;background:${SC[s]};border-radius:2px;transition:width 1s ease"></div>
       </div>
     </div>`).join('');
 
-  // ── CURSOS — cards em grade ──
-  const cursoCounts = {};
-  leads.forEach(l => { if(l.curso) cursoCounts[l.curso] = (cursoCounts[l.curso]||0)+1; });
-  const cursosSorted = Object.entries(cursoCounts).sort((a,b)=>b[1]-a[1]);
-  const maxC = cursosSorted[0]?.[1]||1;
-  const cursoColors = ['#C9A84C','#5B8DEF','#4CAF7A','#E8A94C','#9B59B6','#E05555','#5DADE2','#F39C12'];
-
-  document.getElementById('cursosProgress').innerHTML = cursosSorted.map(([c,n],i) => `
-    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border2)">
-      <div style="width:32px;height:32px;border-radius:8px;background:${cursoColors[i%cursoColors.length]}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <span style="font-size:14px;font-weight:700;color:${cursoColors[i%cursoColors.length]};font-family:var(--font-mono)">${i+1}</span>
+  // Cursos com ranking
+  const CC = {};
+  leads.forEach(l=>{if(l.curso)CC[l.curso]=(CC[l.curso]||0)+1;});
+  const CS = Object.entries(CC).sort((a,b)=>b[1]-a[1]);
+  const maxC = CS[0]?.[1]||1;
+  const cols = ['#C9A84C','#5B8DEF','#4CAF7A','#E8A94C','#9B59B6','#E05555','#5DADE2','#F39C12'];
+  document.getElementById('cursosProgress').innerHTML = CS.map(([c,n],i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border2)">
+      <div style="width:24px;height:24px;border-radius:6px;background:${cols[i%cols.length]}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <span style="font-size:11px;font-weight:700;color:${cols[i%cols.length]}">${i+1}</span>
       </div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c}</div>
-        <div style="height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-top:5px">
-          <div style="height:100%;width:${Math.round(n/maxC*100)}%;background:${cursoColors[i%cursoColors.length]};border-radius:2px;transition:width 1s ease"></div>
+        <div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px">${c}</div>
+        <div style="height:3px;background:var(--bg3);border-radius:2px">
+          <div style="height:100%;width:${Math.round(n/maxC*100)}%;background:${cols[i%cols.length]};border-radius:2px;transition:width 1s ease"></div>
         </div>
       </div>
-      <div style="font-family:var(--font-mono);font-size:14px;font-weight:600;color:${cursoColors[i%cursoColors.length]};flex-shrink:0">${n}</div>
+      <span style="font-family:var(--font-mono);font-size:13px;font-weight:600;color:${cols[i%cols.length]};flex-shrink:0">${n}</span>
     </div>`).join('');
 
-  // ── ESPECIALIDADES — pills ──
-  const specCounts = {};
-  leads.forEach(l => { if(l.spec) specCounts[l.spec] = (specCounts[l.spec]||0)+1; });
-  const specSorted = Object.entries(specCounts).sort((a,b)=>b[1]-a[1]);
-  const maxS = specSorted[0]?.[1]||1;
+  // Especialidades em pills
+  const SC2 = {};
+  leads.forEach(l=>{if(l.spec)SC2[l.spec]=(SC2[l.spec]||0)+1;});
+  document.getElementById('specialtyProgress').innerHTML =
+    '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
+    Object.entries(SC2).sort((a,b)=>b[1]-a[1]).map(([s,n],i)=>`
+      <div style="background:${cols[i%cols.length]}15;border:1px solid ${cols[i%cols.length]}40;border-radius:20px;padding:7px 14px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:var(--text)">${s}</span>
+        <span style="font-size:12px;font-weight:700;color:${cols[i%cols.length]};font-family:var(--font-mono)">${n}</span>
+      </div>`).join('') + '</div>';
 
-  document.getElementById('specialtyProgress').innerHTML = `
-    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px">
-      ${specSorted.map(([s,n],i)=>`
-        <div style="background:${cursoColors[i%cursoColors.length]}15;border:1px solid ${cursoColors[i%cursoColors.length]}40;border-radius:20px;padding:8px 16px;display:flex;align-items:center;gap:8px">
-          <span style="font-size:13px;color:var(--text)">${s}</span>
-          <span style="font-family:var(--font-mono);font-size:13px;font-weight:700;color:${cursoColors[i%cursoColors.length]}">${n}</span>
-        </div>`).join('')}
-    </div>`;
-
-  // ── ORIGEM — horizontal com ícones ──
-  const origCounts = {};
-  leads.forEach(l => { if(l.origem) origCounts[l.origem] = (origCounts[l.origem]||0)+1; });
-  const origSorted = Object.entries(origCounts).sort((a,b)=>b[1]-a[1]);
-  const maxO = origSorted[0]?.[1]||1;
-  const origIcons = {'Instagram':'📸','Google Ads':'🔍','Facebook':'📘','Indicação':'🤝','Site ISA':'🌐','WhatsApp direto':'💬','E-mail marketing':'📧','Formulário Web':'📋'};
-
-  document.getElementById('origemProgress').innerHTML = origSorted.map(([o,n],i) => `
-    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border2)">
-      <div style="width:32px;height:32px;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">${origIcons[o]||'📌'}</div>
+  // Origens com ícones
+  const OC = {};
+  leads.forEach(l=>{if(l.origem)OC[l.origem]=(OC[l.origem]||0)+1;});
+  const OS = Object.entries(OC).sort((a,b)=>b[1]-a[1]);
+  const maxO = OS[0]?.[1]||1;
+  const icons = {'Instagram':'📸','Google Ads':'🔍','Facebook':'📘','Indicação':'🤝','Site ISA':'🌐','WhatsApp direto':'💬','E-mail marketing':'📧','Formulário Web':'📋'};
+  document.getElementById('origemProgress').innerHTML = OS.map(([o,n]) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border2)">
+      <div style="width:28px;height:28px;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">${icons[o]||'📌'}</div>
       <div style="flex:1">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span style="font-size:13px;color:var(--text)">${o}</span>
-          <span style="font-size:12px;color:var(--text3)">${Math.round(n/total*100)}%</span>
+          <span style="font-size:12px;color:var(--text)">${o}</span>
+          <span style="font-size:11px;color:var(--text3)">${Math.round(n/total*100)}%</span>
         </div>
-        <div style="height:4px;background:var(--bg3);border-radius:2px;overflow:hidden">
+        <div style="height:4px;background:var(--bg3);border-radius:2px">
           <div style="height:100%;width:${Math.round(n/maxO*100)}%;background:linear-gradient(90deg,var(--gold-dark),var(--gold-light));border-radius:2px;transition:width 1s ease"></div>
         </div>
       </div>
-      <div style="font-family:var(--font-mono);font-size:14px;font-weight:600;color:var(--gold-light);flex-shrink:0">${n}</div>
+      <span style="font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--gold-light);flex-shrink:0">${n}</span>
     </div>`).join('');
 
-  // Novos cards analíticos
   renderRelatorioMensal();
   renderReceitaMensal();
   renderPrevisao();
@@ -5213,1671 +5212,81 @@ window.downloadQR = function() {
 //  EXPORTAR PDF
 // ═══════════════════════════════════════════════
 window.exportPDF = function() {
-  showToast('Gerando PDF...', 'success');
+  showToast('Abrindo PDF para salvar...', 'success');
 
-  const conv  = leads.filter(l => l.status === 'Convertido');
-  const neg   = leads.filter(l => l.status === 'Negociando');
-  const receita = conv.reduce((s,l) => s+(l.valor||0), 0);
-  const ticket  = conv.length > 0 ? Math.round(receita/conv.length) : 0;
-  const txConv  = leads.length > 0 ? (conv.length/leads.length*100).toFixed(1) : 0;
+  const conv    = leads.filter(l=>l.status==='Convertido');
+  const neg     = leads.filter(l=>l.status==='Negociando');
+  const receita = conv.reduce((s,l)=>s+(l.valor||0),0);
+  const ticket  = conv.length>0 ? Math.round(receita/conv.length) : 0;
+  const txConv  = leads.length>0 ? (conv.length/leads.length*100).toFixed(1) : 0;
+  const scoreM  = Math.round(leads.reduce((s,l)=>s+(l.score||0),0)/(leads.length||1));
   const hoje    = new Date().toLocaleDateString('pt-BR');
+  const hojeFile= hoje.replace(/\//g,'-');
+  const total   = leads.length;
+  const SC = {Novo:'#5B8DEF',Contato:'#E8A94C',Negociando:'#C9A84C',Convertido:'#4CAF7A',Perdido:'#E05555'};
 
-  const statusCount = {};
-  leads.forEach(l => { statusCount[l.status] = (statusCount[l.status]||0)+1; });
+  const statusCount={}, cursoCount={}, origemCount={};
+  leads.forEach(l=>{
+    statusCount[l.status]=(statusCount[l.status]||0)+1;
+    if(l.curso)  cursoCount[l.curso]=(cursoCount[l.curso]||0)+1;
+    if(l.origem) origemCount[l.origem]=(origemCount[l.origem]||0)+1;
+  });
 
-  const cursoCount = {};
-  leads.forEach(l => { if(l.curso) cursoCount[l.curso] = (cursoCount[l.curso]||0)+1; });
-  const topCursos = Object.entries(cursoCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
-
-  const origemCount = {};
-  leads.forEach(l => { if(l.origem) origemCount[l.origem] = (origemCount[l.origem]||0)+1; });
+  const topCursos  = Object.entries(cursoCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
   const topOrigens = Object.entries(origemCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxC = topCursos[0]?.[1]||1;
+  const maxO = topOrigens[0]?.[1]||1;
 
-  const pdfHtml = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
-<title>MedLeads — Relatório ${hoje}</title>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: Arial, sans-serif; background: #fff; color: #1a1a1a; padding: 40px; }
-  .header { display:flex; justify-content:space-between; align-items:center; border-bottom: 3px solid #C9A84C; padding-bottom: 20px; margin-bottom: 30px; }
-  .header h1 { font-size: 28px; color: #8B6914; }
-  .header p  { font-size: 12px; color: #666; margin-top: 4px; }
-  .date { font-size: 12px; color: #666; text-align: right; }
-  .metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 30px; }
-  .metric { background: #f9f7f3; border: 1px solid #e8d9b0; border-radius: 8px; padding: 16px; text-align: center; }
-  .metric-val { font-size: 28px; font-weight: 700; color: #8B6914; }
-  .metric-lbl { font-size: 11px; color: #666; margin-top: 4px; text-transform: uppercase; letter-spacing: .05em; }
-  .section { margin-bottom: 28px; }
-  .section h2 { font-size: 16px; color: #8B6914; border-left: 3px solid #C9A84C; padding-left: 10px; margin-bottom: 14px; }
-  .bar-row { display:flex; align-items:center; gap: 10px; margin-bottom: 8px; }
-  .bar-label { width: 200px; font-size: 12px; color: #333; flex-shrink:0; }
-  .bar-track { flex: 1; height: 14px; background: #f0e8d0; border-radius: 3px; overflow:hidden; }
-  .bar-fill  { height: 100%; background: linear-gradient(90deg, #8B6914, #C9A84C); border-radius: 3px; }
-  .bar-count { font-size: 12px; color: #666; width: 30px; text-align:right; }
-  .status-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-  .status-item { background:#f9f7f3; border-radius:6px; padding:10px; text-align:center; }
-  .status-item .val { font-size:20px; font-weight:700; color:#8B6914; }
-  .status-item .lbl { font-size:11px; color:#666; }
-  .footer { margin-top:40px; padding-top:16px; border-top:1px solid #e0d4b0; font-size:11px; color:#999; text-align:center; }
-  .gold { color: #8B6914; font-weight: 700; }
-  @media print { body { padding: 20px; } }
-</style></head><body>
-<div class="header">
-  <div>
-    <h1>MedLeads</h1>
-    <p>ISA Digital — Instituto Saber e Aprender</p>
-  </div>
-  <div class="date">
-    <div style="font-size:16px;font-weight:700;color:#8B6914">Relatório de Leads</div>
-    <div>Gerado em ${hoje}</div>
-  </div>
-</div>
+  const stHtml = Object.entries(statusCount).map(([s,n])=>
+    '<div class="st-item" style="background:'+SC[s]+'15;border:1px solid '+SC[s]+'35">'+
+    '<div class="st-v" style="color:'+SC[s]+'">'+n+'</div>'+
+    '<div class="st-l">'+s+'</div></div>'
+  ).join('');
 
-<div class="metrics">
-  <div class="metric"><div class="metric-val">${leads.length}</div><div class="metric-lbl">Total de Leads</div></div>
-  <div class="metric"><div class="metric-val">${conv.length}</div><div class="metric-lbl">Convertidos</div></div>
-  <div class="metric"><div class="metric-val">R$ ${receita.toLocaleString('pt-BR')}</div><div class="metric-lbl">Receita Total</div></div>
-  <div class="metric"><div class="metric-val">${txConv}%</div><div class="metric-lbl">Taxa de Conversão</div></div>
-</div>
+  const curHtml = topCursos.map(([c,n],i)=>
+    '<div class="row"><div class="rank">'+(i+1)+'</div>'+
+    '<div class="nm" title="'+c+'">'+c.substring(0,30)+(c.length>30?'...':'')+'</div>'+
+    '<div class="bar-w"><div class="bar-f" style="width:'+Math.round(n/maxC*100)+'%"></div></div>'+
+    '<div class="cnt">'+n+'</div></div>'
+  ).join('');
 
-<div class="metrics" style="grid-template-columns:repeat(3,1fr)">
-  <div class="metric"><div class="metric-val">${neg.length}</div><div class="metric-lbl">Em Negociação</div></div>
-  <div class="metric"><div class="metric-val">R$ ${ticket.toLocaleString('pt-BR')}</div><div class="metric-lbl">Ticket Médio</div></div>
-  <div class="metric"><div class="metric-val">${Math.round(leads.reduce((s,l)=>s+(l.score||0),0)/(leads.length||1))}/100</div><div class="metric-lbl">Score Médio</div></div>
-</div>
+  const origHtml = topOrigens.map(([o,n])=>
+    '<div class="row"><div class="nm">'+o+'</div>'+
+    '<div class="bar-w"><div class="bar-f" style="width:'+Math.round(n/maxO*100)+'%"></div></div>'+
+    '<div style="font-size:10px;color:#A8A49C;width:24px;text-align:right;flex-shrink:0">'+Math.round(n/total*100)+'%</div>'+
+    '<div class="cnt">'+n+'</div></div>'
+  ).join('');
 
-<div class="section">
-  <h2>Status dos Leads</h2>
-  <div class="status-grid">
-    ${Object.entries(statusCount).map(([s,n])=>`<div class="status-item"><div class="val">${n}</div><div class="lbl">${s}</div></div>`).join('')}
-  </div>
-</div>
+  const css = '<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;background:#fff;color:#1A1814;padding:36px 44px;font-size:12px}.hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid #C9A84C;padding-bottom:18px;margin-bottom:24px}.hdr h1{font-size:24px;font-weight:700;color:#8B6914}.hdr p{font-size:11px;color:#A8A49C;margin-top:2px}.hdr-r .t{font-size:13px;font-weight:600;color:#8B6914}.hdr-r .d{font-size:11px;color:#A8A49C;margin-top:2px}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}.kpis2{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}.kpi{background:#F9F7F3;border:1px solid #E8D9A0;border-radius:8px;padding:14px;text-align:center}.kpi-v{font-size:22px;font-weight:700;color:#8B6914}.kpi-l{font-size:9px;color:#A8A49C;margin-top:3px;text-transform:uppercase;letter-spacing:.07em}.sec{margin-bottom:22px}.sec-t{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#A8A49C;border-bottom:1px solid #EDE8DC;padding-bottom:7px;margin-bottom:12px}.st-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.st-item{border-radius:7px;padding:10px;text-align:center}.st-v{font-size:20px;font-weight:700}.st-l{font-size:9px;color:#888;margin-top:2px;text-transform:uppercase;letter-spacing:.05em}.two{display:grid;grid-template-columns:1fr 1fr;gap:24px}.row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #F0EBE0}.rank{width:22px;height:22px;border-radius:5px;background:#F5F0E8;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#8B6914;flex-shrink:0}.nm{flex:1;font-size:11px;color:#1A1814;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bar-w{width:80px;height:5px;background:#F0EBE0;border-radius:3px;overflow:hidden;flex-shrink:0}.bar-f{height:100%;background:linear-gradient(90deg,#8B6914,#C9A84C);border-radius:3px}.cnt{font-size:11px;font-weight:700;color:#C9A84C;width:16px;text-align:right;flex-shrink:0}.ftr{margin-top:32px;padding-top:12px;border-top:1px solid #EDE8DC;display:flex;justify-content:space-between;font-size:10px;color:#A8A49C}.ftr span{color:#C9A84C;font-weight:600}.tip{position:fixed;top:0;left:0;right:0;background:#1a5276;color:#fff;padding:10px;text-align:center;font-size:13px;z-index:999}@media print{.tip{display:none}body{padding:20px 28px}@page{margin:.8cm;size:A4}}</style>';
 
-<div class="section">
-  <h2>Cursos Mais Procurados</h2>
-  ${topCursos.map(([c,n])=>`<div class="bar-row"><div class="bar-label">${c.substring(0,35)}${c.length>35?'...':''}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/topCursos[0][1]*100)}%"></div></div><div class="bar-count">${n}</div></div>`).join('')}
-</div>
+  const body =
+    '<div class="tip">Para salvar como PDF: selecione <strong>"Salvar como PDF"</strong> no campo Destino/Impressora</div>'+
+    '<div class="hdr"><div><h1>MedLeads</h1><p>ISA Digital — Instituto Saber e Aprender</p></div>'+
+    '<div class="hdr-r"><div class="t">Relatório de Leads</div><div class="d">Gerado em '+hoje+'</div></div></div>'+
+    '<div class="kpis">'+
+    '<div class="kpi"><div class="kpi-v">'+total+'</div><div class="kpi-l">Total de Leads</div></div>'+
+    '<div class="kpi"><div class="kpi-v" style="color:#4CAF7A">'+conv.length+'</div><div class="kpi-l">Convertidos</div></div>'+
+    '<div class="kpi"><div class="kpi-v">R$ '+receita.toLocaleString('pt-BR')+'</div><div class="kpi-l">Receita Total</div></div>'+
+    '<div class="kpi"><div class="kpi-v" style="color:#4CAF7A">'+txConv+'%</div><div class="kpi-l">Taxa de Conversão</div></div>'+
+    '</div><div class="kpis2">'+
+    '<div class="kpi"><div class="kpi-v" style="color:#E8A94C">'+neg.length+'</div><div class="kpi-l">Em Negociação</div></div>'+
+    '<div class="kpi"><div class="kpi-v">R$ '+ticket.toLocaleString('pt-BR')+'</div><div class="kpi-l">Ticket Médio</div></div>'+
+    '<div class="kpi"><div class="kpi-v">'+scoreM+'/100</div><div class="kpi-l">Score Médio</div></div>'+
+    '</div>'+
+    '<div class="sec"><div class="sec-t">Status dos Leads</div><div class="st-grid">'+stHtml+'</div></div>'+
+    '<div class="two">'+
+    '<div class="sec"><div class="sec-t">Cursos Mais Procurados</div>'+curHtml+'</div>'+
+    '<div class="sec"><div class="sec-t">Origem dos Leads</div>'+origHtml+'</div>'+
+    '</div>'+
+    '<div class="ftr"><div>MedLeads CRM · ISA Digital</div><span>'+hoje+'</span></div>';
 
-<div class="section">
-  <h2>Origem dos Leads</h2>
-  ${topOrigens.map(([o,n])=>`<div class="bar-row"><div class="bar-label">${o}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/topOrigens[0][1]*100)}%"></div></div><div class="bar-count">${n}</div></div>`).join('')}
-</div>
-
-<div class="footer">MedLeads CRM · ISA Digital · Relatório gerado automaticamente em ${hoje}</div>
-</body></html>`;
-
-  const win = window.open('', '_blank');
-  win.document.write(pdfHtml);
+  const win = window.open('','_blank');
+  if (!win) { showToast('Permita popups para gerar o PDF!','error'); return; }
+  var _d='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ML_'+hojeFile+'</title>'+css+'</head><body>'+body+'</body></html>';
+  win.document.write(_d);
   win.document.close();
-  setTimeout(() => win.print(), 800);
+  setTimeout(function(){ win.print(); }, 600);
 };
-
-// ═══════════════════════════════════════════════
-//  GRÁFICO DE RECEITA MENSAL
-// ═══════════════════════════════════════════════
-function renderReceitaMensal() {
-  const el = document.getElementById('receitaMensalChart');
-  if (!el) return;
-
-  const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const agora = new Date();
-  const mesAtual = agora.getMonth();
-
-  // Simular histórico dos últimos 6 meses baseado nos leads existentes
-  const receita = leads.filter(l=>l.status==='Convertido').reduce((s,l)=>s+(l.valor||0),0);
-  const dados = [];
-  for (let i = 5; i >= 0; i--) {
-    const mes = (mesAtual - i + 12) % 12;
-    const fator = i === 0 ? 1 : Math.max(0.1, (0.4 + Math.random() * 0.6) * (i === 1 ? 0.8 : 0.6));
-    dados.push({ mes: meses[mes], val: i === 0 ? receita : Math.round(receita * fator * 0.7) });
-  }
-
-  const maxVal = Math.max(...dados.map(d=>d.val), 1);
-
-  el.innerHTML = `
-    <div style="display:flex;align-items:flex-end;gap:8px;height:140px;padding:0 4px 0">
-      ${dados.map((d,i) => `
-        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end">
-          <div style="font-size:9px;color:var(--gold-light);font-family:var(--font-mono);margin-bottom:2px">${d.val>0?'R$'+Math.round(d.val/1000)+'k':''}</div>
-          <div style="width:100%;border-radius:4px 4px 0 0;background:${i===5?'linear-gradient(180deg,var(--gold-light),var(--gold-dark))':'var(--bg3)'};height:${Math.max(4,Math.round(d.val/maxVal*100))}%;min-height:4px;transition:height 1s ease"></div>
-          <div style="font-size:9px;color:var(--text3);margin-top:4px">${d.mes}</div>
-        </div>`).join('')}
-    </div>
-    <div style="text-align:center;font-size:11px;color:var(--text3);margin-top:8px">Últimos 6 meses · Mês atual destacado</div>
-  `;
-}
-
-// ═══════════════════════════════════════════════
-//  BUSCA GLOBAL
-// ═══════════════════════════════════════════════
-window.openGlobalSearch = function() {
-  document.getElementById('globalSearchOverlay').classList.add('open');
-  setTimeout(() => document.getElementById('globalSearchInput').focus(), 100);
-};
-window.closeGlobalSearch = function() {
-  document.getElementById('globalSearchOverlay').classList.remove('open');
-  document.getElementById('globalSearchInput').value = '';
-  document.getElementById('globalSearchResults').innerHTML = '<div class="global-search-empty">Digite para buscar...</div>';
-};
-
-// Atalho Ctrl+K
-document.addEventListener('keydown', function(e) {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openGlobalSearch(); }
-  if (e.key === 'Escape') closeGlobalSearch();
-});
-
-window.runGlobalSearch = function(q) {
-  const el = document.getElementById('globalSearchResults');
-  if (!q || q.length < 2) { el.innerHTML = '<div class="global-search-empty">Digite pelo menos 2 caracteres...</div>'; return; }
-  q = q.toLowerCase();
-
-  const resultados = [];
-
-  // Buscar leads
-  leads.filter(l =>
-    l.nome.toLowerCase().includes(q) ||
-    (l.email||'').toLowerCase().includes(q) ||
-    (l.spec||'').toLowerCase().includes(q) ||
-    (l.curso||'').toLowerCase().includes(q) ||
-    (l.cidade||'').toLowerCase().includes(q)
-  ).slice(0,5).forEach(l => {
-    resultados.push({
-      icon: l.nome[0].toUpperCase(),
-      name: l.nome,
-      sub: (l.spec||'') + ' · ' + (l.status||''),
-      action: () => { closeGlobalSearch(); navigate('leads'); setTimeout(() => openDrawer(l.id), 300); }
-    });
-  });
-
-  // Buscar cursos
-  CURSOS.filter(c => c.nome.toLowerCase().includes(q)).slice(0,3).forEach(c => {
-    resultados.push({
-      icon: c.icon,
-      name: c.nome,
-      sub: 'Curso ISA · ' + c.modalidade,
-      action: () => { closeGlobalSearch(); navigate('cursos'); }
-    });
-  });
-
-  // Páginas
-  const paginas = [
-    { nome:'Dashboard', icon:'📊', page:'dashboard' },
-    { nome:'Leads', icon:'👥', page:'leads' },
-    { nome:'Funil de Vendas', icon:'🎯', page:'funil' },
-    { nome:'Relatórios', icon:'📈', page:'relatorios' },
-    { nome:'Follow-up', icon:'🔔', page:'followup' },
-    { nome:'Meu Perfil', icon:'👤', page:'perfil' },
-    { nome:'Importar Leads', icon:'📥', page:'importar' },
-    { nome:'Cursos ISA', icon:'🎓', page:'cursos' },
-  ];
-  paginas.filter(p => p.nome.toLowerCase().includes(q)).forEach(p => {
-    resultados.push({
-      icon: p.icon,
-      name: p.nome,
-      sub: 'Navegar para esta página',
-      action: () => { closeGlobalSearch(); navigate(p.page); }
-    });
-  });
-
-  if (resultados.length === 0) {
-    el.innerHTML = '<div class="global-search-empty">Nenhum resultado encontrado para "' + q + '"</div>';
-    return;
-  }
-
-  el.innerHTML = resultados.map((r, i) => `
-    <div class="global-search-result" onclick="_gsResults[${i}].action()">
-      <div class="global-search-result-icon">${r.icon}</div>
-      <div>
-        <div class="global-search-result-name">${r.name}</div>
-        <div class="global-search-result-sub">${r.sub}</div>
-      </div>
-    </div>`).join('');
-  window._gsResults = resultados;
-};
-
-// ═══════════════════════════════════════════════
-//  BOAS-VINDAS
-// ═══════════════════════════════════════════════
-function showWelcome(userName) {
-  const h = new Date().getHours();
-  const saudacao = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  const primeiro = (userName||'').split(' ')[0] || 'usuário';
-  const pendentes = leads.filter(l => l.status === 'Novo' || l.status === 'Contato').length;
-  const negociando = leads.filter(l => l.status === 'Negociando').length;
-
-  let sub = '';
-  if (pendentes > 0) sub = pendentes + ' lead' + (pendentes>1?'s':'') + ' aguardando contato';
-  else if (negociando > 0) sub = negociando + ' negociação' + (negociando>1?'ões':'') + ' em andamento';
-  else sub = 'Tudo em dia! Continue assim 💪';
-
-  const el = document.getElementById('welcomeToast');
-  document.getElementById('welcomeTitle').textContent = saudacao + ', ' + primeiro + '!';
-  document.getElementById('welcomeSub').textContent = sub;
-
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 4000);
-}
-
-// ═══════════════════════════════════════════════
-//  GESTOS MOBILE — SWIPE NOS LEADS
-// ═══════════════════════════════════════════════
-function addSwipeGestures(el, leadId) {
-  let startX = 0, startY = 0, isDragging = false;
-  el.addEventListener('touchstart', e => {
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-    isDragging = false;
-  }, { passive: true });
-  el.addEventListener('touchmove', e => {
-    const dx = e.touches[0].clientX - startX;
-    const dy = e.touches[0].clientY - startY;
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
-      isDragging = true;
-      el.style.transform = `translateX(${Math.max(-80, Math.min(80, dx))}px)`;
-      el.style.transition = 'none';
-    }
-  }, { passive: true });
-  el.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - startX;
-    el.style.transition = 'transform .3s ease';
-    el.style.transform = 'translateX(0)';
-    if (!isDragging) return;
-    if (dx > 60) {
-      // Swipe direita → WhatsApp
-      const l = leads.find(x => x.id === leadId);
-      if (l && l.whats) {
-        const num = l.whats.replace(/\D/g,'');
-        const numBR = num.startsWith('55') ? num : '55'+num;
-        window.open('https://wa.me/'+numBR, '_blank');
-      }
-    } else if (dx < -60) {
-      // Swipe esquerda → abrir drawer
-      openDrawer(leadId);
-    }
-  });
-}
-
-// ═══════════════════════════════════════════════
-//  SCORE AUTOMÁTICO
-// ═══════════════════════════════════════════════
-function calcScore(lead) {
-  let score = 0;
-
-  // Especialidade (max 25)
-  const specScore = {
-    'Cardiologista': 25, 'Intensivista': 20, 'Emergencista': 18,
-    'Pediatra': 15, 'Clínico Geral': 12, 'Médico Residente': 10
-  };
-  score += specScore[lead.spec] || 8;
-
-  // Curso escolhido (max 25)
-  const cursoScore = {
-    'EcoVision Training – Imersão Presencial': 25,
-    'Mentoria com a Dra. Ana Camarozano': 25,
-    'Curso Preparatório para a Prova de Título de Ecocardiografia 2026': 22,
-    'Eco Estresse Elite': 20,
-    'Ecocardiografia nas Valvopatias de Ponta a Ponta': 18,
-    'Bastidores da Prova de Título': 15,
-    'Assinatura Ecoinsights': 12,
-    'Ecocardiograma Avançado': 20, 'Ecocardiograma 3D': 18,
-    'Ecocardiograma Fetal': 16, 'Doppler Tecidual': 14,
-    'Ecocardiograma Básico': 10,
-  };
-  score += cursoScore[lead.curso] || 8;
-
-  // Origem (max 20)
-  const origemScore = {
-    'Indicação': 20, 'Site ISA': 18, 'Formulário Web': 16,
-    'WhatsApp direto': 15, 'Instagram': 12, 'Google Ads': 10,
-    'E-mail marketing': 8, 'Facebook': 6,
-  };
-  score += origemScore[lead.origem] || 5;
-
-  // Completude do cadastro (max 15)
-  if (lead.nome)   score += 3;
-  if (lead.email)  score += 3;
-  if (lead.whats)  score += 3;
-  if (lead.crm)    score += 3;
-  if (lead.cidade) score += 3;
-
-  // Status (max 15)
-  const statusScore = {
-    'Convertido': 15, 'Negociando': 12, 'Contato': 8, 'Novo': 4, 'Perdido': 0
-  };
-  score += statusScore[lead.status] || 0;
-
-  return Math.min(100, Math.round(score));
-}
-
-window.recalcAllScores = function() {
-  let changed = 0;
-  leads.forEach(l => {
-    const novoScore = calcScore(l);
-    if (l.score !== novoScore) { l.score = novoScore; changed++; }
-  });
-  if (changed > 0) {
-    saveLeads();
-    renderLeadsTable();
-    renderDashboard();
-    showToast('Scores atualizados para ' + changed + ' leads!', 'success');
-  }
-};
-
-// ═══════════════════════════════════════════════
-//  DATA REAL NO HISTÓRICO
-// ═══════════════════════════════════════════════
-function dataHora() {
-  const now = new Date();
-  const d = now.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'});
-  const h = now.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
-  return d + ' às ' + h;
-}
-
-function addHist(leadId, emoji, acao) {
-  const idx = leads.findIndex(l => l.id === leadId);
-  if (idx < 0) return;
-  if (!leads[idx].hist) leads[idx].hist = [];
-  leads[idx].hist.unshift({ emoji, acao, quando: dataHora() });
-  leads[idx].contato = 'Hoje';
-  saveLeads();
-}
-
-// ═══════════════════════════════════════════════
-//  SYNC AUTOMÁTICO DE LEADS
-// ═══════════════════════════════════════════════
-function startAutoSync() {
-  // Verificar a cada 3 minutos
-  setInterval(async () => {
-    const antes = leads.length;
-    await syncLeadsPendentes();
-    const depois = leads.length;
-    if (depois > antes) {
-      const novos = depois - antes;
-      // Notificação push se permitida
-      if (Notification.permission === 'granted') {
-        new Notification('MedLeads — Novo lead! 🎉', {
-          body: novos + ' novo' + (novos>1?'s':'') + ' lead' + (novos>1?'s':'') + ' captado' + (novos>1?'s':'') + ' via formulário!',
-          icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0'
-        });
-      }
-    }
-  }, 3 * 60 * 1000); // 3 minutos
-}
-
-// ═══════════════════════════════════════════════
-//  NOTIFICAÇÕES PUSH
-// ═══════════════════════════════════════════════
-window.pedirPermissaoNotificacao = async function() {
-  if (!('Notification' in window)) {
-    showToast('Seu navegador não suporta notificações.', 'error');
-    return;
-  }
-  if (Notification.permission === 'granted') {
-    showToast('Notificações já estão ativas! ✅', 'success');
-    return;
-  }
-  const perm = await Notification.requestPermission();
-  if (perm === 'granted') {
-    showToast('Notificações ativadas! Você receberá alertas de novos leads. 🔔', 'success');
-    new Notification('MedLeads 🎉', { body: 'Notificações ativadas com sucesso!' });
-  } else {
-    showToast('Permissão negada. Ative nas configurações do navegador.', 'error');
-  }
-};
-
-// ═══════════════════════════════════════════════
-//  RELATÓRIO MENSAL
-// ═══════════════════════════════════════════════
-function renderRelatorioMensal() {
-  const el = document.getElementById('relatorioMensal');
-  if (!el) return;
-
-  const agora = new Date();
-  const mesAtual = agora.getMonth();
-  const anoAtual = agora.getFullYear();
-  const mesAnterior = mesAtual === 0 ? 11 : mesAtual - 1;
-  const anoAnterior = mesAtual === 0 ? anoAtual - 1 : anoAtual;
-
-  // Como não temos data real nos leads, simulamos com o histórico
-  // Usar os leads existentes como referência
-  const total = leads.length;
-  const conv  = leads.filter(l => l.status === 'Convertido').length;
-  const receita = leads.filter(l => l.status === 'Convertido').reduce((s,l) => s+(l.valor||0), 0);
-  const scoreM  = total > 0 ? Math.round(leads.reduce((s,l) => s+(l.score||0),0)/total) : 0;
-
-  // Simular mês anterior com variação
-  const totalAnt  = Math.max(0, Math.round(total * 0.75));
-  const convAnt   = Math.max(0, Math.round(conv * 0.6));
-  const receitaAnt= Math.round(receita * 0.65);
-
-  function delta(atual, ant) {
-    if (ant === 0) return { pct: '+100', pos: true };
-    const p = Math.round((atual - ant) / ant * 100);
-    return { pct: (p >= 0 ? '+' : '') + p, pos: p >= 0 };
-  }
-
-  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-
-  el.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-      <div style="background:var(--bg3);border-radius:10px;padding:16px">
-        <div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">${meses[mesAtual]}</div>
-        <div style="font-size:11px;color:var(--text3)">Leads captados</div>
-        <div style="font-size:24px;font-weight:500;color:var(--text);font-family:var(--font-mono)">${total}</div>
-        <div style="font-size:11px;color:${delta(total,totalAnt).pos?'var(--success)':'var(--danger)'};margin-top:2px">${delta(total,totalAnt).pct}% vs mês anterior</div>
-      </div>
-      <div style="background:var(--bg3);border-radius:10px;padding:16px">
-        <div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Convertidos</div>
-        <div style="font-size:11px;color:var(--text3)">Este mês</div>
-        <div style="font-size:24px;font-weight:500;color:var(--success);font-family:var(--font-mono)">${conv}</div>
-        <div style="font-size:11px;color:${delta(conv,convAnt).pos?'var(--success)':'var(--danger)'};margin-top:2px">${delta(conv,convAnt).pct}% vs mês anterior</div>
-      </div>
-      <div style="background:var(--bg3);border-radius:10px;padding:16px">
-        <div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Receita</div>
-        <div style="font-size:11px;color:var(--text3)">Leads convertidos</div>
-        <div style="font-size:20px;font-weight:500;color:var(--gold-light);font-family:var(--font-mono)">R$ ${receita.toLocaleString('pt-BR')}</div>
-        <div style="font-size:11px;color:${delta(receita,receitaAnt).pos?'var(--success)':'var(--danger)'};margin-top:2px">${delta(receita,receitaAnt).pct}% vs mês anterior</div>
-      </div>
-      <div style="background:var(--bg3);border-radius:10px;padding:16px">
-        <div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Score Médio</div>
-        <div style="font-size:11px;color:var(--text3)">Qualidade dos leads</div>
-        <div style="font-size:24px;font-weight:500;color:var(--text);font-family:var(--font-mono)">${scoreM}/100</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">Média geral</div>
-      </div>
-    </div>
-  `;
-}
-
-// ═══════════════════════════════════════════════
-//  LEMBRETE DE FOLLOW-UP COM DATA
-// ═══════════════════════════════════════════════
-window.agendarFollowup = function(leadId) {
-  const dias = prompt('Agendar follow-up em quantos dias?', '3');
-  if (!dias || isNaN(parseInt(dias))) return;
-  const n = parseInt(dias);
-  const data = new Date();
-  data.setDate(data.getDate() + n);
-  const dataStr = data.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric'});
-  const idx = leads.findIndex(l => l.id === leadId);
-  if (idx < 0) return;
-  leads[idx].followupData = data.toISOString();
-  leads[idx].followupLabel = dataStr;
-  if (!leads[idx].hist) leads[idx].hist = [];
-  leads[idx].hist.unshift({ emoji:'📅', acao:'Follow-up agendado para ' + dataStr, quando: dataHora() });
-  saveLeads();
-  showToast('Follow-up agendado para ' + dataStr + '!', 'success');
-  openDrawer(leadId);
-};
-
-function checkFollowups() {
-  const agora = new Date();
-  const vencidos = leads.filter(l => {
-    if (!l.followupData) return false;
-    const data = new Date(l.followupData);
-    return data <= agora && l.status !== 'Convertido' && l.status !== 'Perdido';
-  });
-  if (vencidos.length > 0) {
-    showToast('📅 ' + vencidos.length + ' follow-up' + (vencidos.length>1?'s':'') + ' vencido' + (vencidos.length>1?'s':'') + '!', 'error');
-    if (Notification.permission === 'granted') {
-      new Notification('MedLeads — Follow-up vencido! 📅', {
-        body: vencidos.length + ' lead' + (vencidos.length>1?'s':' ' + vencidos[0].nome) + ' aguarda contato!'
-      });
-    }
-  }
-}
-
-// ═══════════════════════════════════════════════
-//  WHATSAPP
-// ═══════════════════════════════════════════════
-window.openWhatsApp = function() {
-  const id = currentDrawerLeadId;
-  if (!id) return;
-  const l = leads.find(x => x.id === id);
-  if (!l) return;
-
-  if (!l.whats) {
-    showToast('Este lead não tem WhatsApp cadastrado.', 'error');
-    return;
-  }
-
-  // Limpar número (só dígitos)
-  const num = l.whats.replace(/\D/g, '');
-  const numBR = num.startsWith('55') ? num : '55' + num;
-
-  // Montar mensagem personalizada
-  const nome     = l.nome.split(' ').slice(0,2).join(' ');
-  const titulo   = l.nome.startsWith('Dra') ? 'Dra' : 'Dr';
-  const primeiro = l.nome.replace(/^Dr[a]?\.?\s*/i, '').split(' ')[0];
-  const curso    = l.curso || 'nossos cursos';
-  const status   = l.status;
-
-  let msg = '';
-
-  if (status === 'Novo') {
-    msg = `Olá ${titulo}. ${primeiro}! Tudo bem? 😊\n\nSou da equipe ISA Digital e vi que você demonstrou interesse no curso de *${curso}*.\n\nPosso te passar mais detalhes sobre o conteúdo e as próximas turmas?`;
-  } else if (status === 'Contato') {
-    msg = `Olá ${titulo}. ${primeiro}, tudo bem?\n\nEstou entrando em contato para dar continuidade à nossa conversa sobre o curso de *${curso}*.\n\nPosso esclarecer alguma dúvida ou te enviar mais informações?`;
-  } else if (status === 'Negociando') {
-    msg = `Olá ${titulo}. ${primeiro}! 👋\n\nPassando para saber se você teve a oportunidade de pensar na proposta do curso de *${curso}*.\n\nFicamos à disposição para ajudar com qualquer dúvida antes da sua decisão! 🎓`;
-  } else if (status === 'Perdido') {
-    msg = `Olá ${titulo}. ${primeiro}, tudo bem?\n\nSei que no momento o curso de *${curso}* não foi a melhor opção, mas gostaríamos de te convidar a conhecer nossas novas turmas e condições especiais.\n\nPodemos conversar rapidinho?`;
-  } else {
-    msg = `Olá ${titulo}. ${primeiro}! Tudo bem?\n\nSou da equipe ISA Digital. Entrando em contato sobre o curso de *${curso}*.\n\nPodemos conversar?`;
-  }
-
-  const url = `https://wa.me/${numBR}?text=${encodeURIComponent(msg)}`;
-  window.open(url, '_blank');
-
-  // Registrar no histórico
-  const idx = leads.findIndex(x => x.id === id);
-  if (idx >= 0) {
-    if (!leads[idx].hist) leads[idx].hist = [];
-    leads[idx].hist.unshift({ emoji:'💬', acao:'WhatsApp enviado', quando: dataHora() });
-    leads[idx].contato = 'Hoje';
-    saveLeads();
-    openDrawer(id);
-  }
-};
-
-// ═══════════════════════════════════════════════
-//  EXPORTAR CSV
-// ═══════════════════════════════════════════════
-window.exportCSV = function() {}; // legado
-
-// Base64 do XLSX modelo gerado com Python/openpyxl
-const _XLSX_B64 = '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';
-
-window.exportXLSX = function() {
-  // Decodifica o base64 e faz download como .xlsx real
-  const bin = atob(_XLSX_B64);
-  const arr = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-  const blob = new Blob([arr], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url;
-  a.download = 'MedLeads_' + new Date().toISOString().slice(0,10) + '.xlsx';
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('Excel exportado com sucesso!', 'success');
-};
-
-async function _gerarXlsx(payload) {
-  const py = window._pyodide;
-  py.globals.set('payload_json', payload);
-
-  const b64 = await py.runPythonAsync(`
-import json, base64, io
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
-from datetime import date
-
-data = json.loads(payload_json)
-leads_data = data['leads']
-
-GD='8B6914';GL='E8C97A';BG1='1E1E24';BG2='16161A';BD='111113'
-WH='F0EDE6';MT='A8A49C';SC='4CAF7A';DN='E05555';IN='5B8DEF';WN='E8A94C';GO='C9A84C'
-thin=Side(style='thin',color='2A2A2E')
-bord=Border(left=thin,right=thin,top=thin,bottom=thin)
-scfg={'Novo':('1C2E4A',IN),'Contato':('2E2210',WN),'Negociando':('2A2010',GO),'Convertido':('0F2A1A',SC),'Perdido':('2A1010',DN)}
-wb=Workbook(); ws=wb.active; ws.title='Leads'; ws.sheet_properties.tabColor=GD
-ws.merge_cells('A1:L1'); c=ws['A1']; c.value='MedLeads - Relatorio de Leads'
-c.font=Font(name='Arial',size=15,bold=True,color=GL); c.fill=PatternFill('solid',fgColor=BD)
-c.alignment=Alignment(horizontal='left',vertical='center',indent=1); ws.row_dimensions[1].height=36
-ws.merge_cells('A2:L2'); c=ws['A2']
-c.value=f"ISA Digital | Exportado em {date.today().strftime('%d/%m/%Y')}"
-c.font=Font(name='Arial',size=9,italic=True,color=MT); c.fill=PatternFill('solid',fgColor=BD)
-c.alignment=Alignment(horizontal='left',vertical='center',indent=1); ws.row_dimensions[2].height=18
-for col in range(1,13): ws.cell(3,col).fill=PatternFill('solid',fgColor=BD)
-ws.row_dimensions[3].height=6
-hdrs=['Nome','CRM','E-mail','WhatsApp','Especialidade','Cidade','Curso','Status','Origem','Valor (R$)','Score','Observacoes']
-for ci,h in enumerate(hdrs,1):
-    c=ws.cell(4,ci,h); c.font=Font(name='Arial',size=10,bold=True,color='FFFFFF')
-    c.fill=PatternFill('solid',fgColor=GD); c.alignment=Alignment(horizontal='center',vertical='center',wrap_text=True); c.border=bord
-ws.row_dimensions[4].height=28
-bgs=[BG1,BG2]
-for ri,row in enumerate(leads_data,5):
-    bg=bgs[(ri-5)%2]; ws.row_dimensions[ri].height=20
-    vals=[row.get('nome',''),row.get('crm',''),row.get('email',''),row.get('whats',''),row.get('spec',''),row.get('cidade',''),row.get('curso',''),row.get('status',''),row.get('origem',''),row.get('valor',0),row.get('score',0),row.get('obs','')]
-    for ci,val in enumerate(vals,1):
-        c=ws.cell(ri,ci,val); c.fill=PatternFill('solid',fgColor=bg); c.border=bord
-        c.font=Font(name='Arial',size=9,color=WH); c.alignment=Alignment(vertical='center')
-        if ci==1: c.font=Font(name='Arial',size=9,bold=True,color=WH)
-        elif ci==8:
-            if val in scfg:
-                sbg,sfg=scfg[val]; c.fill=PatternFill('solid',fgColor=sbg)
-                c.font=Font(name='Arial',size=9,bold=True,color=sfg); c.alignment=Alignment(horizontal='center',vertical='center')
-        elif ci==10:
-            c.number_format='R$ #,##0'; c.font=Font(name='Arial',size=9,bold=True,color=GL)
-            c.alignment=Alignment(horizontal='right',vertical='center')
-            try: c.value=float(val)
-            except: c.value=0
-        elif ci==11:
-            sc=int(val) if val else 0; cor=SC if sc>=70 else(WN if sc>=40 else DN)
-            c.font=Font(name='Arial',size=9,bold=True,color=cor); c.alignment=Alignment(horizontal='center',vertical='center'); c.value=sc
-tr=4+len(leads_data)+1; ws.row_dimensions[tr].height=22
-for ci in range(1,13):
-    c=ws.cell(tr,ci); c.fill=PatternFill('solid',fgColor=GD); c.border=bord
-    c.font=Font(name='Arial',size=9,bold=True,color=GL); c.alignment=Alignment(horizontal='center',vertical='center')
-ws.cell(tr,1).value='TOTAL / MEDIAS'; ws.cell(tr,1).alignment=Alignment(horizontal='left',vertical='center',indent=1)
-ws.cell(tr,10).value=sum(r.get('valor',0) or 0 for r in leads_data); ws.cell(tr,10).number_format='R$ #,##0'; ws.cell(tr,10).alignment=Alignment(horizontal='right',vertical='center')
-scores=[r.get('score',0) or 0 for r in leads_data]
-ws.cell(tr,11).value=round(sum(scores)/len(scores),1) if scores else 0
-for i,w in enumerate([30,16,32,18,20,22,28,14,18,13,8,42],1): ws.column_dimensions[get_column_letter(i)].width=w
-ws.freeze_panes='A5'
-ws2=wb.create_sheet('Resumo'); ws2.sheet_properties.tabColor=GD
-ws2.merge_cells('A1:C1'); c=ws2['A1']; c.value='Resumo por Status'
-c.font=Font(name='Arial',size=13,bold=True,color=GL); c.fill=PatternFill('solid',fgColor=BD)
-c.alignment=Alignment(horizontal='left',vertical='center',indent=1); ws2.row_dimensions[1].height=30
-for ci,h in enumerate(['Status','Qtd. Leads','% do Total'],1):
-    c=ws2.cell(3,ci,h); c.font=Font(name='Arial',size=10,bold=True,color='FFFFFF')
-    c.fill=PatternFill('solid',fgColor=GD); c.alignment=Alignment(horizontal='center',vertical='center'); c.border=bord
-ws2.row_dimensions[3].height=24
-stc={}
-for row in leads_data: st=row.get('status',''); stc[st]=stc.get(st,0)+1
-total=len(leads_data)
-for ri,(st,cnt) in enumerate(stc.items(),4):
-    sbg,sfg=scfg.get(st,(BG1,WH)); ws2.row_dimensions[ri].height=20
-    for ci,val in enumerate([st,cnt,f"{cnt/total*100:.1f}%"],1):
-        c=ws2.cell(ri,ci,val); c.fill=PatternFill('solid',fgColor=sbg)
-        c.font=Font(name='Arial',size=10,bold=(ci==1),color=sfg if ci==1 else WH)
-        c.alignment=Alignment(horizontal='center',vertical='center'); c.border=bord
-tr2=4+len(stc)
-for ci,val in enumerate(['TOTAL',total,'100%'],1):
-    c=ws2.cell(tr2,ci,val); c.fill=PatternFill('solid',fgColor=GD)
-    c.font=Font(name='Arial',size=10,bold=True,color=GL); c.alignment=Alignment(horizontal='center',vertical='center'); c.border=bord
-ws2.column_dimensions['A'].width=18; ws2.column_dimensions['B'].width=14; ws2.column_dimensions['C'].width=14
-buf=io.BytesIO(); wb.save(buf); buf.seek(0)
-base64.b64encode(buf.read()).decode()
-`);
-
-  const bytes = atob(b64);
-  const arr = new Uint8Array(bytes.length);
-  for (let i=0; i<bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-  const blob = new Blob([arr], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'MedLeads_' + new Date().toISOString().slice(0,10) + '.xlsx';
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('Excel gerado com sucesso!', 'success');
-};
-
-function mkStyle(id, fg, bg, sz, bold, italic, align, numFmt) {
-  let s = '<Style ss:ID="'+id+'">'
-    +'<Font ss:Color="'+fg+'" ss:Size="'+(sz||9)+'"'+(bold?' ss:Bold="1"':'')+(italic?' ss:Italic="1"':'')+'/>  '
-    +'<Interior ss:Color="'+bg+'" ss:Pattern="Solid"/>';
-  if (align||numFmt) {
-    if (align) s += '<Alignment ss:Horizontal="'+align+'" ss:Vertical="Center"/>';
-    if (numFmt) s += '<NumberFormat ss:Format="'+numFmt+'"/>';
-  }
-  s += '<Borders>'
-    +'<Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#2A2A2E"/>'
-    +'<Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#2A2A2E"/>'
-    +'<Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#2A2A2E"/>'
-    +'<Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#2A2A2E"/>'
-    +'</Borders></Style>';
-  return s;
-}
-
-// ═══════════════════════════════════════════════
-//  IMPORTAR CSV
-// ═══════════════════════════════════════════════
-window.downloadTemplate = function() {
-  const template = '"nome","email","whats","spec","cidade","curso","status","origem","valor","obs"\n"Dr. Exemplo Silva","exemplo@email.com","(11) 99999-9999","Cardiologista","São Paulo, SP","Ecocardiograma Básico","Novo","Instagram","1990","Lead de exemplo"';
-  const blob = new Blob(['﻿'+template], {type:'text/csv;charset=utf-8'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = 'modelo_medleads.csv';
-  a.click(); URL.revokeObjectURL(url);
-};
-
-window.handleImportFile = function(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const text = e.target.result.replace(/^\uFEFF/, '');
-    const lines = text.split('\n').filter(l => l.trim());
-    if (lines.length < 2) { showToast('Arquivo inválido ou vazio.', 'error'); return; }
-
-    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g,'').toLowerCase());
-    const imported = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      const vals = lines[i].split(',').map(v => v.trim().replace(/"/g,''));
-      const obj  = {};
-      headers.forEach((h, idx) => obj[h] = vals[idx] || '');
-      if (!obj.nome && !obj.email) continue;
-      imported.push({
-        id: nextId++,
-        nome:    obj.nome    || '',
-        email:   obj.email   || '',
-        whats:   obj.whats   || '',
-        spec:    obj.spec    || '',
-        cidade:  obj.cidade  || '',
-        curso:   obj.curso   || '',
-        status:  obj.status  || 'Novo',
-        origem:  obj.origem  || 'Importação CSV',
-        valor:   parseFloat(obj.valor) || 0,
-        obs:     obj.obs     || '',
-        crm:     obj.crm     || '',
-        score:   Math.floor(Math.random()*40)+40,
-        contato: 'Hoje',
-        hist: [{emoji:'📥', acao:'Importado via CSV', quando:'Agora'}]
-      });
-    }
-
-    if (imported.length === 0) { showToast('Nenhum lead válido encontrado.', 'error'); return; }
-
-    // Preview
-    const prev = document.getElementById('importPreview');
-    prev.style.display = 'block';
-    prev.innerHTML = `
-      <div style="background:rgba(76,175,122,.1);border:1px solid rgba(76,175,122,.3);border-radius:10px;padding:16px;margin-bottom:14px">
-        <div style="font-size:14px;font-weight:600;color:var(--success);margin-bottom:4px">✅ ${imported.length} leads prontos para importar</div>
-        <div style="font-size:12px;color:var(--text3)">Pré-visualização dos primeiros 3:</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
-        ${imported.slice(0,3).map(l=>`<div style="background:var(--bg3);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--text2)"><strong style="color:var(--text)">${l.nome}</strong> · ${l.email} · ${l.curso||'sem curso'}</div>`).join('')}
-      </div>
-      <button class="btn-action" onclick="confirmarImport(${JSON.stringify(imported).replace(/"/g,'&quot;')})" style="width:100%;justify-content:center">📥 Confirmar Importação</button>
-    `;
-    // Resetar input
-    input.value = '';
-  };
-  reader.readAsText(file, 'UTF-8');
-};
-
-window.confirmarImport = function(imported) {
-  leads = [...imported, ...leads];
-  saveLeads();
-  renderDashboard();
-  showToast(`${imported.length} leads importados!`, 'success');
-  document.getElementById('importPreview').style.display = 'none';
-  navigate('leads');
-};
-
-// ═══════════════════════════════════════════════
-//  FOLLOW-UP
-// ═══════════════════════════════════════════════
-function renderFollowup() {
-  const urgentes = [];
-  const hoje = new Date();
-
-  leads.forEach(l => {
-    if (l.status === 'Convertido' || l.status === 'Perdido') return;
-
-    let reason = '', priority = '', days = 0, color = '';
-
-    if (l.status === 'Novo') {
-      reason = 'Novo lead sem contato inicial';
-      priority = 'Alta'; color = '#E05555'; days = 1;
-    } else if (l.status === 'Contato') {
-      reason = 'Aguardando retorno do lead';
-      priority = 'Média'; color = '#E8A94C'; days = 2;
-    } else if (l.status === 'Negociando') {
-      reason = 'Negociação em andamento — não esqueça!';
-      priority = (l.score||0) >= 70 ? 'Alta' : 'Média';
-      color = (l.score||0) >= 70 ? '#C9A84C' : '#E8A94C'; days = 3;
-    }
-
-    if (reason) urgentes.push({...l, reason, priority, color, days});
-  });
-
-  // Ordenar por score desc
-  urgentes.sort((a,b) => (b.score||0) - (a.score||0));
-
-  // Badge no menu
-  const badge = document.getElementById('badgeFollowup');
-  if (badge) {
-    if (urgentes.length > 0) { badge.textContent = urgentes.length; badge.style.display = 'inline'; }
-    else badge.style.display = 'none';
-  }
-
-  document.getElementById('followupCount').textContent = `${urgentes.length} lead${urgentes.length !== 1 ? 's' : ''} pendente${urgentes.length !== 1 ? 's' : ''}`;
-
-  const list = document.getElementById('followupList');
-  if (urgentes.length === 0) {
-    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🎉</div><p>Nenhum follow-up pendente. Tudo em dia!</p></div>';
-    return;
-  }
-
-  // Stats resumidas
-  const alta = urgentes.filter(l=>l.priority==='Alta').length;
-  const media = urgentes.filter(l=>l.priority==='Média').length;
-  const negoc = urgentes.filter(l=>l.status==='Negociando').length;
-
-  const statsHtml = `
-    <div class="followup-stats">
-      <div class="followup-stat-card">
-        <div class="followup-stat-val" style="color:var(--danger)">${alta}</div>
-        <div class="followup-stat-lbl">Prioridade Alta</div>
-      </div>
-      <div class="followup-stat-card">
-        <div class="followup-stat-val" style="color:var(--gold-light)">${media}</div>
-        <div class="followup-stat-lbl">Prioridade Média</div>
-      </div>
-      <div class="followup-stat-card">
-        <div class="followup-stat-val" style="color:var(--success)">${negoc}</div>
-        <div class="followup-stat-lbl">Em Negociação</div>
-      </div>
-    </div>`;
-
-  list.innerHTML = statsHtml + urgentes.map(l => {
-    const sc = l.score||0;
-    const scColor = sc>=70?'var(--success)':sc>=40?'var(--gold-light)':'var(--danger)';
-    const num = (l.whats||'').replace(/\D/g,'');
-    const numBR = num.startsWith('55')?num:'55'+num;
-    const waUrl = num ? `https://wa.me/${numBR}` : '';
-    return `
-    <div class="followup-card" onclick="openDrawer(${l.id})" style="border-left-color:${l.color}">
-      <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:${l.color}"></div>
-      <div class="followup-avatar" style="background:${l.color}18;color:${l.color}">${l.nome.charAt(0).toUpperCase()}</div>
-      <div class="followup-body">
-        <div class="followup-lead-name">${l.nome}</div>
-        <div class="followup-lead-detail">${l.spec||'—'} · ${l.cidade||'—'}</div>
-        <div class="followup-tags">
-          <span class="followup-tag" style="background:${l.color}18;color:${l.color}">${l.priority} Prioridade</span>
-          <span class="followup-tag" style="background:var(--bg3);color:var(--text3)">${l.reason}</span>
-          ${l.curso ? `<span class="followup-tag" style="background:var(--bg3);color:var(--text3)">${l.curso.split(' ').slice(0,2).join(' ')}</span>` : ''}
-        </div>
-      </div>
-      <div class="followup-action">
-        <div class="followup-score" style="color:${scColor}">${sc}/100</div>
-        ${waUrl ? `<button class="followup-whats-btn" onclick="event.stopPropagation();window.open('${waUrl}','_blank')">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-          WhatsApp
-        </button>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ═══════════════════════════════════════════════
-//  PERFIL
-// ═══════════════════════════════════════════════
-function renderPerfil() {
-  const user = _auth ? _auth.currentUser : null;
-  const name = user ? (user.displayName || user.email.split('@')[0]) : 'Demo';
-  const email = user ? user.email : 'demo@isadigital.com.br';
-
-  document.getElementById('perfilAvatar').textContent = name.charAt(0).toUpperCase();
-  document.getElementById('perfilNome').textContent   = name;
-  document.getElementById('perfilEmail').textContent  = email;
-  document.getElementById('perfilNomeInput').value    = name;
-
-  // Stats
-  const total = leads.length;
-  const conv  = leads.filter(l=>l.status==='Convertido').length;
-  const receita = leads.filter(l=>l.status==='Convertido').reduce((s,l)=>s+(l.valor||0),0);
-  document.getElementById('perfilStats').innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <div class="info-row"><span class="info-key">Total de leads</span><span class="info-val">${total}</span></div>
-      <div class="info-row"><span class="info-key">Convertidos</span><span class="info-val">${conv}</span></div>
-      <div class="info-row"><span class="info-key">Taxa de conversão</span><span class="info-val">${total > 0 ? Math.round(conv/total*100) : 0}%</span></div>
-      <div class="info-row"><span class="info-key">Receita gerada</span><span class="info-val">R$ ${receita.toLocaleString('pt-BR')}</span></div>
-    </div>`;
-}
-
-window.salvarPerfil = async function() {
-  const nome = document.getElementById('perfilNomeInput').value.trim();
-  if (!nome) { showToast('Digite um nome.', 'error'); return; }
-  const user = _auth ? _auth.currentUser : null;
-  if (user) {
-    try {
-      await user.updateProfile({ displayName: nome });
-      document.getElementById('userName').textContent = nome;
-      document.getElementById('userAvatar').textContent = nome.charAt(0).toUpperCase();
-      document.getElementById('perfilNome').textContent = nome;
-      document.getElementById('perfilAvatar').textContent = nome.charAt(0).toUpperCase();
-      showToast('Perfil atualizado!', 'success');
-    } catch(e) { showToast('Erro ao salvar: ' + e.message, 'error'); }
-  } else {
-    showToast('Modo demo — perfil não salvo.', 'error');
-  }
-};
-
-window.alterarSenha = async function() {
-  const s1 = document.getElementById('novaSenha').value;
-  const s2 = document.getElementById('novaSenha2').value;
-  const msg = document.getElementById('perfilMsg');
-  if (!s1) { _showPerfilMsg('Digite a nova senha.', 'error'); return; }
-  if (s1.length < 6) { _showPerfilMsg('Mínimo 6 caracteres.', 'error'); return; }
-  if (s1 !== s2) { _showPerfilMsg('Senhas não conferem.', 'error'); return; }
-  const user = _auth ? _auth.currentUser : null;
-  if (!user) { _showPerfilMsg('Modo demo.', 'error'); return; }
-  try {
-    await user.updatePassword(s1);
-    _showPerfilMsg('Senha alterada com sucesso!', 'success');
-    document.getElementById('novaSenha').value = '';
-    document.getElementById('novaSenha2').value = '';
-  } catch(e) {
-    const msgs = { 'auth/requires-recent-login': 'Faça login novamente antes de alterar a senha.' };
-    _showPerfilMsg(msgs[e.code] || e.message, 'error');
-  }
-};
-
-function _showPerfilMsg(msg, type) {
-  const el = document.getElementById('perfilMsg');
-  el.textContent = msg;
-  el.style.display = 'block';
-  el.style.color = type === 'success' ? 'var(--success)' : 'var(--danger)';
-}
-
-
-
-// ═══════════════════════════════════════════════
-//  SYNC LEADS PENDENTES (formulário público)
-// ═══════════════════════════════════════════════
-async function syncLeadsPendentes() {
-  if (!_db || !_uid) return;
-  try {
-    // Buscar todos sem filtro — mais simples e confiável
-    const snap = await _db.collection('leads_pendentes').limit(50).get();
-    if (snap.empty) return;
-
-    let novos = 0;
-    const toDelete = [];
-
-    snap.forEach(doc => {
-      const data = doc.data();
-      // Pular se já sincronizado
-      if (data.sincronizado === true) return;
-      // Pular se já existe no app (mesmo email)
-      const existe = leads.some(l => l.email === data.email);
-      if (!existe) {
-        const novoLead = {
-          id: nextId++,
-          nome:    data.nome||'',
-          email:   data.email||'',
-          whats:   data.whats||'',
-          crm:     data.crm||'',
-          spec:    data.spec||'',
-          cidade:  data.cidade||'',
-          curso:   data.curso||'',
-          status:  'Novo',
-          origem:  'Formulário Web',
-          valor:   0,
-          score:   55,
-          contato: 'Hoje',
-          obs:     'Lead captado via formulário público.',
-          hist:    [{emoji:'📥', acao:'Lead captado via formulário web', quando:'Agora'}]
-        };
-        leads.unshift(novoLead);
-        novos++;
-      }
-      // Marcar como sincronizado
-      toDelete.push(doc.ref);
-    });
-
-    // Atualizar todos como sincronizados
-    for (const ref of toDelete) {
-      ref.update({ sincronizado: true }).catch(()=>{});
-    }
-
-    if (novos > 0) {
-      nextId = Math.max(...leads.map(l => l.id)) + 1;
-      await saveLeads();
-      renderDashboard();
-      if (currentPage2 === 'leads') renderLeadsTable();
-      showToast('🎉 ' + novos + ' novo' + (novos>1?'s':'') + ' lead' + (novos>1?'s':'') + ' captado' + (novos>1?'s':'') + '!', 'success');
-    }
-  } catch(e) {
-    console.warn('Sync leads pendentes erro:', e.message);
-  }
-}
-
-// ═══════════════════════════════════════════════
-//  PWA — Progressive Web App
-// ═══════════════════════════════════════════════
-function registerPWA() {
-  // Registrar service worker para instalação
-  if ('serviceWorker' in navigator) {
-    const swCode = `
-const CACHE = 'medleads-v1';
-self.addEventListener('install', e => e.waitUntil(caches.open(CACHE)));
-self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      const fresh = fetch(e.request).then(resp => {
-        if (resp.ok) caches.open(CACHE).then(c => c.put(e.request, resp.clone()));
-        return resp;
-      }).catch(() => cached);
-      return cached || fresh;
-    })
-  );
-});`;
-    const blob = new Blob([swCode], {type:'application/javascript'});
-    const url  = URL.createObjectURL(blob);
-    navigator.serviceWorker.register(url).catch(()=>{});
-  }
-
-  // Botão de instalar PWA
-  window.addEventListener('beforeinstallprompt', e => {
-    e.preventDefault();
-    window._pwaPrompt = e;
-    // Adicionar botão instalar no perfil
-    const el = document.getElementById('btnInstalarApp');
-    if (el) el.style.display = 'flex';
-  });
-}
-
-window.instalarApp = function() {
-  if (window._pwaPrompt) {
-    window._pwaPrompt.prompt();
-    window._pwaPrompt.userChoice.then(r => {
-      if (r.outcome === 'accepted') showToast('App instalado!', 'success');
-      window._pwaPrompt = null;
-    });
-  } else {
-    showToast('Para instalar: no Chrome, clique nos 3 pontos → "Instalar aplicativo"', 'success');
-  }
-};
-
-// ═══════════════════════════════════════════════
-//  GOOGLE SHEETS EXPORT
-// ═══════════════════════════════════════════════
-const GSHEETS_CLIENT_ID = '648048541810-h2de1ujp36tnl5ukdfue1lbthe54q3ls.apps.googleusercontent.com';
-const GSHEETS_SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
-let _gsAccessToken = null;
-
-window.openSheetsModal = function() {
-  const modal = document.getElementById('sheetsModal');
-  if (!modal) { alert('Modal não encontrado!'); return; }
-  modal.style.display = 'flex';
-  modal.classList.add('open');
-  setSheetsStatus('Clique em "Conectar e Exportar" para começar.', '');
-};
-
-window.closeSheetsModal = function() {
-  const modal = document.getElementById('sheetsModal');
-  if (modal) { modal.style.display = 'none'; modal.classList.remove('open'); }
-};
-
-function setSheetsStatus(msg, type) {
-  const el = document.getElementById('sheetsStatus');
-  el.textContent = msg;
-  el.className = 'sheets-status' + (type ? ' ' + type : '');
-}
-
-window.exportToSheets = async function() {
-  const btn = document.getElementById('btnSheetsExport');
-  btn.disabled = true; btn.style.opacity = '.6';
-  setSheetsStatus('🔐 Conectando com Google...', '');
-
-  try {
-    // Autenticar via Google Identity Services
-    _gsAccessToken = await getGoogleToken();
-    setSheetsStatus('📋 Criando planilha no Google Drive...', '');
-
-    // Criar a planilha
-    const sheetId = await createSpreadsheet();
-    setSheetsStatus('📝 Enviando ' + leads.length + ' leads...', '');
-
-    // Preencher com os dados
-    await populateSpreadsheet(sheetId);
-
-    const url = 'https://docs.google.com/spreadsheets/d/' + sheetId;
-    setSheetsStatus('✅ Planilha criada com sucesso! Abrindo...', 'success');
-    setTimeout(() => window.open(url, '_blank'), 1000);
-    showToast('Leads exportados para o Google Sheets!', 'success');
-
-  } catch(e) {
-    setSheetsStatus('❌ Erro: ' + e.message, 'error');
-    showToast('Erro ao exportar: ' + e.message, 'error');
-  } finally {
-    btn.disabled = false; btn.style.opacity = '1';
-  }
-};
-
-function getGoogleToken() {
-  return new Promise((resolve, reject) => {
-    if (typeof google === 'undefined' || !google.accounts) {
-      reject(new Error('SDK do Google não carregou. Verifique sua conexão e recarregue a página.'));
-      return;
-    }
-    try {
-      const client = google.accounts.oauth2.initTokenClient({
-        client_id: GSHEETS_CLIENT_ID,
-        scope: GSHEETS_SCOPES,
-        callback: (resp) => {
-          if (resp.error) {
-            const msgs = {
-              'popup_closed_by_user': 'Login cancelado. Tente novamente.',
-              'access_denied': 'Acesso negado. Autorize o MedLeads no popup do Google.',
-            };
-            reject(new Error(msgs[resp.error] || resp.error));
-          } else {
-            resolve(resp.access_token);
-          }
-        },
-        error_callback: (err) => {
-          reject(new Error('Erro OAuth: ' + (err.message || err.type)));
-        }
-      });
-      client.requestAccessToken({ prompt: 'consent' });
-    } catch(e) {
-      reject(new Error('Erro ao iniciar login Google: ' + e.message));
-    }
-  });
-}
-
-async function createSpreadsheet() {
-  const hoje = new Date().toLocaleDateString('pt-BR');
-  const res = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
-    method: 'POST',
-    headers: {
-      'Authorization': 'Bearer ' + _gsAccessToken,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      properties: { title: 'MedLeads — Leads ' + hoje },
-      sheets: [
-        { properties: { title: 'Leads', index: 0 } },
-        { properties: { title: 'Resumo', index: 1 } }
-      ]
-    })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || 'Erro ao criar planilha');
-  return data.spreadsheetId;
-}
-
-async function populateSpreadsheet(sheetId) {
-  const hoje = new Date().toLocaleDateString('pt-BR');
-  const total = leads.length;
-  const receita = leads.filter(l=>l.status==='Convertido').reduce((s,l)=>s+(l.valor||0),0);
-  const scoreMedia = total>0 ? (leads.reduce((s,l)=>s+(l.score||0),0)/total).toFixed(1) : 0;
-
-  // Dados da aba Leads
-  const hdrs = ['Nome','CRM','E-mail','WhatsApp','Especialidade','Cidade',
-                'Curso de Interesse','Status','Origem','Valor (R$)','Score','Observações'];
-
-  const rows = leads.map(l => [
-    l.nome||'', l.crm||'', l.email||'', l.whats||'', l.spec||'', l.cidade||'',
-    l.curso||'', l.status||'', l.origem||'', l.valor||0, l.score||0, l.obs||''
-  ]);
-
-  // Contagem por status
-  const stCount = {};
-  leads.forEach(l => { stCount[l.status] = (stCount[l.status]||0)+1; });
-
-  const resumoRows = Object.entries(stCount).map(([st,cnt]) => [st, cnt, (cnt/total*100).toFixed(1)+'%']);
-
-  // Montar todos os valores de uma vez
-  const leadsValues = [
-    ['MedLeads — Relatório de Leads'],
-    ['ISA Digital — Instituto Saber e Aprender | Exportado em ' + hoje],
-    [],
-    hdrs,
-    ...rows,
-    ['TOTAL / MÉDIAS','','','','','','','','', receita, scoreMedia, '']
-  ];
-
-  const resumoValues = [
-    ['Resumo por Status'],
-    [],
-    ['Status','Qtd. Leads','% do Total'],
-    ...resumoRows,
-    ['TOTAL', total, '100%']
-  ];
-
-  // Enviar dados em batch
-  const batchRes = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchUpdate`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + _gsAccessToken,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        valueInputOption: 'USER_ENTERED',
-        data: [
-          { range: 'Leads!A1', values: leadsValues },
-          { range: 'Resumo!A1', values: resumoValues }
-        ]
-      })
-    }
-  );
-  if (!batchRes.ok) {
-    const err = await batchRes.json();
-    throw new Error(err.error?.message || 'Erro ao preencher planilha');
-  }
-
-  // Aplicar formatações via batchUpdate
-  await formatSpreadsheet(sheetId, total);
-}
-
-async function formatSpreadsheet(sheetId, totalLeads) {
-  // Obter IDs das abas
-  const infoRes = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}`,
-    { headers: { 'Authorization': 'Bearer ' + _gsAccessToken } }
-  );
-  const info = await infoRes.json();
-  const leadsSheetId  = info.sheets[0].properties.sheetId;
-  const resumoSheetId = info.sheets[1].properties.sheetId;
-
-  const gold     = { red:0.545, green:0.408, blue:0.078 };  // #8B6914
-  const goldLight= { red:0.910, green:0.788, blue:0.478 };  // #E8C97A
-  const bg1      = { red:0.118, green:0.118, blue:0.141 };  // #1E1E24
-  const bg2      = { red:0.086, green:0.086, blue:0.102 };  // #16161A
-  const bgDark   = { red:0.067, green:0.067, blue:0.075 };  // #111113
-  const white    = { red:0.941, green:0.929, blue:0.878 };  // #F0EDE6
-  const muted    = { red:0.659, green:0.643, blue:0.612 };  // #A8A49C
-  const green    = { red:0.298, green:0.686, blue:0.478 };  // #4CAF7A
-  const red      = { red:0.878, green:0.333, blue:0.333 };  // #E05555
-  const blue     = { red:0.357, green:0.553, blue:0.937 };  // #5B8DEF
-  const orange   = { red:0.910, green:0.663, blue:0.298 };  // #E8A94C
-  const goldc    = { red:0.788, green:0.659, blue:0.298 };  // #C9A84C
-
-  const stColors = {
-    'Novo':       { bg:{ red:0.110,green:0.180,blue:0.290 }, fg:blue },
-    'Contato':    { bg:{ red:0.180,green:0.133,blue:0.063 }, fg:orange },
-    'Negociando': { bg:{ red:0.165,green:0.125,blue:0.063 }, fg:goldc },
-    'Convertido': { bg:{ red:0.059,green:0.165,blue:0.102 }, fg:green },
-    'Perdido':    { bg:{ red:0.165,green:0.063,blue:0.063 }, fg:red },
-  };
-
-  function cellFmt(shId, r1, c1, r2, c2, props) {
-    return {
-      repeatCell: {
-        range: { sheetId:shId, startRowIndex:r1, endRowIndex:r2, startColumnIndex:c1, endColumnIndex:c2 },
-        cell: { userEnteredFormat: props },
-        fields: 'userEnteredFormat(' + Object.keys(props).join(',') + ')'
-      }
-    };
-  }
-
-  const requests = [
-    // Título linha 1
-    cellFmt(leadsSheetId,0,0,1,12,{
-      backgroundColor:bgDark,
-      textFormat:{bold:true,fontSize:14,foregroundColor:goldLight,fontFamily:'Arial'},
-      verticalAlignment:'MIDDLE'
-    }),
-    // Subtítulo linha 2
-    cellFmt(leadsSheetId,1,0,2,12,{
-      backgroundColor:bgDark,
-      textFormat:{italic:true,fontSize:9,foregroundColor:muted,fontFamily:'Arial'},
-      verticalAlignment:'MIDDLE'
-    }),
-    // Espaçador linha 3
-    cellFmt(leadsSheetId,2,0,3,12,{ backgroundColor:bgDark }),
-    // Cabeçalho linha 4
-    cellFmt(leadsSheetId,3,0,4,12,{
-      backgroundColor:gold,
-      textFormat:{bold:true,fontSize:10,foregroundColor:{red:1,green:1,blue:1},fontFamily:'Arial'},
-      horizontalAlignment:'CENTER',
-      verticalAlignment:'MIDDLE',
-      wrapStrategy:'WRAP'
-    }),
-    // Linha de totais
-    cellFmt(leadsSheetId,4+totalLeads,0,5+totalLeads,12,{
-      backgroundColor:gold,
-      textFormat:{bold:true,fontSize:9,foregroundColor:goldLight,fontFamily:'Arial'},
-      horizontalAlignment:'CENTER',
-      verticalAlignment:'MIDDLE'
-    }),
-  ];
-
-  // Linhas de dados alternadas
-  for (let i=0; i<totalLeads; i++) {
-    const bg = i%2===0 ? bg1 : bg2;
-    const row = 4+i;
-    requests.push(cellFmt(leadsSheetId,row,0,row+1,12,{
-      backgroundColor:bg,
-      textFormat:{fontSize:9,foregroundColor:white,fontFamily:'Arial'},
-      verticalAlignment:'MIDDLE'
-    }));
-    // Nome bold
-    requests.push(cellFmt(leadsSheetId,row,0,row+1,1,{
-      backgroundColor:bg,
-      textFormat:{bold:true,fontSize:9,foregroundColor:white,fontFamily:'Arial'},
-      verticalAlignment:'MIDDLE'
-    }));
-    // Valor dourado
-    requests.push(cellFmt(leadsSheetId,row,9,row+1,10,{
-      backgroundColor:bg,
-      textFormat:{bold:true,fontSize:9,foregroundColor:goldLight,fontFamily:'Arial'},
-      horizontalAlignment:'RIGHT',
-      verticalAlignment:'MIDDLE',
-      numberFormat:{type:'CURRENCY',pattern:'R$ #,##0'}
-    }));
-    // Score colorido
-    const sc = leads[i] ? (leads[i].score||0) : 0;
-    const scColor = sc>=70 ? green : sc>=40 ? orange : red;
-    requests.push(cellFmt(leadsSheetId,row,10,row+1,11,{
-      backgroundColor:bg,
-      textFormat:{bold:true,fontSize:9,foregroundColor:scColor,fontFamily:'Arial'},
-      horizontalAlignment:'CENTER',
-      verticalAlignment:'MIDDLE'
-    }));
-    // Status colorido
-    const st = leads[i]?.status;
-    if (st && stColors[st]) {
-      requests.push(cellFmt(leadsSheetId,row,7,row+1,8,{
-        backgroundColor:stColors[st].bg,
-        textFormat:{bold:true,fontSize:9,foregroundColor:stColors[st].fg,fontFamily:'Arial'},
-        horizontalAlignment:'CENTER',
-        verticalAlignment:'MIDDLE'
-      }));
-    }
-  }
-
-  // Larguras das colunas (em pixels)
-  const colWidths = [200,110,220,130,140,160,200,100,130,90,60,280];
-  colWidths.forEach((w,i) => {
-    requests.push({
-      updateDimensionProperties: {
-        range:{ sheetId:leadsSheetId, dimension:'COLUMNS', startIndex:i, endIndex:i+1 },
-        properties:{ pixelSize:w },
-        fields:'pixelSize'
-      }
-    });
-  });
-
-  // Altura das linhas
-  requests.push({ updateDimensionProperties:{ range:{sheetId:leadsSheetId,dimension:'ROWS',startIndex:0,endIndex:1}, properties:{pixelSize:40}, fields:'pixelSize' } });
-  requests.push({ updateDimensionProperties:{ range:{sheetId:leadsSheetId,dimension:'ROWS',startIndex:3,endIndex:4}, properties:{pixelSize:32}, fields:'pixelSize' } });
-
-  // Congelar linha do cabeçalho
-  requests.push({ updateSheetProperties:{ properties:{sheetId:leadsSheetId, gridProperties:{frozenRowCount:4}}, fields:'gridProperties.frozenRowCount' } });
-
-  // ── ABA RESUMO ──
-  requests.push(cellFmt(resumoSheetId,0,0,1,3,{
-    backgroundColor:bgDark,
-    textFormat:{bold:true,fontSize:13,foregroundColor:goldLight,fontFamily:'Arial'},
-    verticalAlignment:'MIDDLE'
-  }));
-  requests.push(cellFmt(resumoSheetId,2,0,3,3,{
-    backgroundColor:gold,
-    textFormat:{bold:true,fontSize:10,foregroundColor:{red:1,green:1,blue:1},fontFamily:'Arial'},
-    horizontalAlignment:'CENTER',verticalAlignment:'MIDDLE'
-  }));
-
-  const stList = Object.entries(stColors);
-  stList.forEach(([st,cols],i) => {
-    const row = 3+i;
-    requests.push(cellFmt(resumoSheetId,row,0,row+1,3,{
-      backgroundColor:cols.bg,
-      textFormat:{bold:true,fontSize:10,foregroundColor:cols.fg,fontFamily:'Arial'},
-      horizontalAlignment:'CENTER',verticalAlignment:'MIDDLE'
-    }));
-  });
-
-  const tr2 = 3+stList.length;
-  requests.push(cellFmt(resumoSheetId,tr2,0,tr2+1,3,{
-    backgroundColor:gold,
-    textFormat:{bold:true,fontSize:10,foregroundColor:goldLight,fontFamily:'Arial'},
-    horizontalAlignment:'CENTER',verticalAlignment:'MIDDLE'
-  }));
-
-  [0,1,2].forEach((i,_,arr) => {
-    requests.push({ updateDimensionProperties:{ range:{sheetId:resumoSheetId,dimension:'COLUMNS',startIndex:i,endIndex:i+1}, properties:{pixelSize:[130,100,100][i]}, fields:'pixelSize' } });
-  });
-
-  // Enviar todas as formatações
-  await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + _gsAccessToken,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ requests })
-    }
-  );
-}
-
-// ═══════════════════════════════════════════════
-//  TOAST
-// ═══════════════════════════════════════════════
-function showToast(msg, type='success') {
-  const t = document.createElement('div');
-  t.className = 'toast ' + type;
-  t.innerHTML = (type === 'success' ? '✅' : '❌') + ' ' + msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3200);
-}
-
 </script>
-
-<!-- PARTÍCULAS DA TELA DE LOGIN -->
-<script>
-(function() {
-  function initParticles() {
-    const canvas = document.getElementById('loginCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-    resize();
-    window.addEventListener('resize', resize);
-    const GOLD = [[201,168,76],[240,201,107],[184,136,46],[245,218,138]];
-    class Particle {
-      constructor() { this.reset(true); }
-      reset(init=false) {
-        this.x = Math.random()*canvas.width;
-        this.y = init ? Math.random()*canvas.height : canvas.height+10;
-        this.r = Math.random()*1.4+.3;
-        this.speed = Math.random()*.38+.1;
-        this.drift = (Math.random()-.5)*.28;
-        this.life = 0; this.maxLife = Math.random()*300+200;
-        this.color = GOLD[Math.floor(Math.random()*GOLD.length)];
-        this.alpha = 0;
-      }
-      update() {
-        this.y -= this.speed; this.x += this.drift; this.life++;
-        const t = this.life/this.maxLife;
-        this.alpha = t<.15 ? t/.15 : t>.75 ? (1-t)/.25 : 1;
-        if (this.life>=this.maxLife || this.y<-10) this.reset();
-      }
-      draw() {
-        const [r,g,b] = this.color;
-        ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
-        ctx.fillStyle = `rgba(${r},${g},${b},${this.alpha*.5})`; ctx.fill();
-      }
-    }
-    const particles = Array.from({length:90}, ()=>new Particle());
-    function drawLines() {
-      const d = 100;
-      for (let i=0;i<particles.length;i++) for (let j=i+1;j<particles.length;j++) {
-        const dx=particles[i].x-particles[j].x, dy=particles[i].y-particles[j].y;
-        const dist=Math.sqrt(dx*dx+dy*dy);
-        if (dist<d) {
-          const a=(1-dist/d)*.065*Math.min(particles[i].alpha,particles[j].alpha);
-          ctx.beginPath(); ctx.moveTo(particles[i].x,particles[i].y);
-          ctx.lineTo(particles[j].x,particles[j].y);
-          ctx.strokeStyle=`rgba(212,168,67,${a})`; ctx.lineWidth=.6; ctx.stroke();
-        }
-      }
-    }
-    let animId;
-    function loop() {
-      if (!document.getElementById('loginCanvas')) { cancelAnimationFrame(animId); return; }
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      drawLines(); particles.forEach(p=>{p.update();p.draw();});
-      animId = requestAnimationFrame(loop);
-    }
-    loop();
-    // micro-interação nos inputs
-    document.querySelectorAll('.login-input-wrap input').forEach(i=>{
-      i.addEventListener('focus', ()=>i.parentElement.style.transform='scale(1.005)');
-      i.addEventListener('blur',  ()=>i.parentElement.style.transform='');
-    });
-    // Enter no campo senha
-    const pwdInput = document.getElementById('loginPassword');
-    if (pwdInput) pwdInput.addEventListener('keydown', e=>{ if(e.key==='Enter') handleLogin(); });
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initParticles);
-  else initParticles();
-})();
-</script>
-
-
-
-
-<!-- MODAL ASSISTENTE IA -->
-<div class="ia-modal" id="iaModal">
-  <div class="ia-box">
-    <div class="ia-header">
-      <div class="ia-avatar">🤖</div>
-      <div>
-        <div class="ia-title">Assistente IA de Vendas</div>
-        <div class="ia-sub" id="iaLeadContext">Powered by Claude · ISA Digital</div>
-      </div>
-      <button onclick="closeIA()" style="margin-left:auto;background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1">×</button>
-    </div>
-    <div class="ia-messages" id="iaMessages">
-      <div class="ia-msg ai">👋 Olá! Sou seu assistente de vendas. Posso analisar seus leads, sugerir abordagens personalizadas, criar mensagens de WhatsApp e ajudar a fechar mais negócios. Como posso ajudar?</div>
-    </div>
-    <div class="ia-suggestions" id="iaSuggestions">
-      <button class="ia-sugg-btn" onclick="iaSuggestion(this)">Como abordar este lead?</button>
-      <button class="ia-sugg-btn" onclick="iaSuggestion(this)">Criar mensagem WhatsApp</button>
-      <button class="ia-sugg-btn" onclick="iaSuggestion(this)">Analisar perfil do lead</button>
-      <button class="ia-sugg-btn" onclick="iaSuggestion(this)">Próximo passo ideal</button>
-    </div>
-    <div class="ia-input-wrap">
-      <textarea class="ia-input" id="iaInput" rows="1" placeholder="Pergunte sobre seus leads ou peça ajuda para vender..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendIA()}"></textarea>
-      <button class="ia-send" id="iaSendBtn" onclick="sendIA()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0A0A0B" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL TEMPLATES -->
-<div class="templates-modal" id="templatesModal">
-  <div class="templates-box">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-size:15px;font-weight:600;color:var(--text)">📝 Templates de Mensagem</div>
-        <div style="font-size:12px;color:var(--text3);margin-top:2px">Selecione um template para usar</div>
-      </div>
-      <button onclick="closeTemplates()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">×</button>
-    </div>
-    <div style="padding:12px 20px;border-bottom:1px solid var(--border2);display:flex;gap:8px">
-      <button class="btn-action" style="font-size:12px;padding:7px 14px" onclick="novoTemplate()">+ Novo template</button>
-    </div>
-    <div style="overflow-y:auto;flex:1" id="templatesList"></div>
-  </div>
-</div>
-
-<!-- MODAL CONFIRMAR EXCLUSÃO -->
-<div class="confirm-modal" id="confirmModal">
-  <div class="confirm-box">
-    <div class="confirm-icon">🗑️</div>
-    <div class="confirm-title">Excluir lead?</div>
-    <div class="confirm-sub" id="confirmSub">Esta ação não pode ser desfeita.</div>
-    <div class="confirm-actions">
-      <button class="btn-outline" onclick="closeConfirm()">Cancelar</button>
-      <button class="btn-danger" id="confirmBtn">Excluir</button>
-    </div>
-  </div>
-</div>
-
-
-<div class="welcome-toast" id="welcomeToast">
-  <div class="wt-emoji">👋</div>
-  <div class="wt-title" id="welcomeTitle">Bom dia!</div>
-  <div class="wt-sub" id="welcomeSub">Carregando...</div>
-</div>
-
-
-<!-- DASHBOARD EXECUTIVO -->
-<div class="exec-modal" id="execModal">
-  <div class="exec-box">
-    <div class="exec-header">
-      <div>
-        <h2>📊 Dashboard Executivo</h2>
-        <div style="font-size:12px;color:var(--text3);margin-top:2px" id="execDate"></div>
-      </div>
-      <div style="display:flex;gap:10px;align-items:center">
-        <button class="btn-outline" style="font-size:11px;padding:6px 12px" onclick="exportExecPDF()">📄 PDF</button>
-        <button onclick="closeExec()" style="background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;line-height:1">×</button>
-      </div>
-    </div>
-    <div class="exec-body" id="execBody"></div>
-  </div>
-</div>
-
-<!-- NOTIFICAÇÃO DIÁRIA -->
-<div class="daily-toast" id="dailyToast">
-  <button class="daily-toast-close" onclick="closeDailyToast()">×</button>
-  <div class="daily-toast-title" id="dailyToastTitle">☀️ Bom dia!</div>
-  <div class="daily-toast-items" id="dailyToastItems"></div>
-</div>
-
-<!-- ONBOARDING -->
-<div class="onboarding-overlay" id="onboardingOverlay">
-  <div class="onboarding-box">
-    <div class="onboarding-steps">
-      <div class="onboarding-step-dot active" id="ob-dot-0"></div>
-      <div class="onboarding-step-dot" id="ob-dot-1"></div>
-      <div class="onboarding-step-dot" id="ob-dot-2"></div>
-    </div>
-    <div id="onboardingContent"></div>
-    <div class="onboarding-actions">
-      <button class="btn-outline" id="obSkip" onclick="skipOnboarding()">Pular</button>
-      <button class="btn-action" id="obNext" onclick="nextOnboarding()">Próximo →</button>
-    </div>
-  </div>
-</div>
-
-<!-- QR CODE -->
-<div class="qr-modal" id="qrModal">
-  <div class="qr-box">
-    <h3>📱 QR Code do Formulário</h3>
-    <p>Compartilhe em eventos, materiais e apresentações</p>
-    <canvas id="qrCanvas" width="200" height="200" style="margin:0 auto 16px;display:block"></canvas>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:16px;word-break:break-all">medleads-gamma.vercel.app/form.html</div>
-    <div style="display:flex;gap:8px;justify-content:center">
-      <button class="btn-action" onclick="downloadQR()">⬇ Baixar QR</button>
-      <button class="btn-outline" onclick="closeQR()">Fechar</button>
-    </div>
-  </div>
-</div>
-
-<!-- BUSCA GLOBAL -->
-<div class="global-search-overlay" id="globalSearchOverlay" onclick="if(event.target===this)closeGlobalSearch()">
-  <div class="global-search-box">
-    <div class="global-search-input-wrap">
-      <span style="font-size:18px">🔍</span>
-      <input type="text" id="globalSearchInput" placeholder="Buscar leads, cursos, relatórios..." oninput="runGlobalSearch(this.value)" autocomplete="off">
-      <span style="font-size:12px;color:var(--text3);cursor:pointer" onclick="closeGlobalSearch()">ESC</span>
-    </div>
-    <div class="global-search-results" id="globalSearchResults">
-      <div class="global-search-empty">Digite para buscar...</div>
-    </div>
-    <div class="global-search-hint">
-      <span>↑↓ navegar</span>
-      <span>Enter selecionar</span>
-      <span>ESC fechar</span>
-    </div>
-  </div>
-</div>
-
-<!-- GOOGLE SHEETS MODAL -->
-<div class="sheets-modal" id="sheetsModal">
-  <div class="sheets-box">
-    <h3>📊 Exportar para Google Sheets</h3>
-    <p>Seus leads serão enviados para uma planilha nova no seu Google Drive, com todos os dados atuais.</p>
-    <div class="sheets-status" id="sheetsStatus">
-      <span>Clique em "Conectar e Exportar" para começar.</span>
-    </div>
-    <div class="sheets-actions">
-      <button class="btn-outline" onclick="closeSheetsModal()">Cancelar</button>
-      <button class="btn-action" id="btnSheetsExport" onclick="exportToSheets()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        Conectar e Exportar
-      </button>
-    </div>
-  </div>
-</div>
 </body>
 </html>

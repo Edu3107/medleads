@@ -1900,6 +1900,97 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
     max-width: 100% !important;
   }
 }
+
+/* ── BUSCA GLOBAL ── */
+.global-search-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 80px;
+}
+.global-search-overlay.open { display: flex; }
+.global-search-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 600px;
+  max-width: calc(100vw - 32px);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  overflow: hidden;
+  animation: fadeUp .2s ease both;
+}
+.global-search-input-wrap {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border2);
+  gap: 12px;
+}
+.global-search-input-wrap input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px;
+  color: var(--text);
+}
+.global-search-input-wrap input::placeholder { color: var(--text3); }
+.global-search-results {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+.global-search-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.global-search-result:hover { background: var(--bg3); }
+.global-search-result-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: var(--bg3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.global-search-result-name { font-size: 14px; font-weight: 500; color: var(--text); }
+.global-search-result-sub  { font-size: 12px; color: var(--text3); margin-top: 1px; }
+.global-search-empty { padding: 32px; text-align: center; color: var(--text3); font-size: 14px; }
+.global-search-hint { padding: 10px 20px; font-size: 11px; color: var(--text3); border-top: 1px solid var(--border2); display: flex; justify-content: space-between; }
+
+/* ── BOAS-VINDAS ── */
+.welcome-toast {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 24px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.4), var(--shadow-gold);
+  z-index: 500;
+  text-align: center;
+  opacity: 0;
+  transition: all .4s cubic-bezier(.16,1,.3,1);
+  pointer-events: none;
+  min-width: 280px;
+}
+.welcome-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.welcome-toast .wt-emoji { font-size: 28px; margin-bottom: 6px; }
+.welcome-toast .wt-title { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 600; color: var(--text); }
+.welcome-toast .wt-sub   { font-size: 12px; color: var(--text3); margin-top: 4px; }
 </style>
 <script src="https://apis.google.com/js/api.js" defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -2117,6 +2208,7 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
       <button class="hamburger" onclick="toggleSidebar()">☰</button>
       <div class="topbar-title" id="topbarTitle">Dashboard</div>
       <div class="topbar-actions">
+        <button class="btn-outline" onclick="openGlobalSearch()" title="Busca global (Ctrl+K)">🔍</button>
         <button class="btn-outline" onclick="toggleTheme()" id="btnTheme" title="Alternar tema">🌙</button>
         <button class="btn-outline" onclick="openSheetsModal()" title="Exportar para Google Sheets">📊 Sheets</button>
         <button class="btn-outline" onclick="exportXLSX()" title="Exportar Excel">⬇ Excel</button>
@@ -3055,6 +3147,12 @@ window.initApp = async function() {
   setTimeout(checkFollowups, 2000);
   startAutoSync();
   registerPWA();
+  // Boas-vindas
+  setTimeout(() => {
+    const user = _auth && _auth.currentUser;
+    const nome = user ? (user.displayName || user.email.split('@')[0]) : 'usuário';
+    showWelcome(nome);
+  }, 1500);
   // Pedir permissão de notificação após 5s
   setTimeout(() => {
     if (Notification.permission === 'default') {
@@ -3256,11 +3354,16 @@ function renderKanban() {
     const stLeads = leads.filter(l => l.status === stage.key);
     const col = document.createElement('div');
     col.className = 'kanban-col';
+    const colTotal = stLeads.reduce((s,l) => s+(l.valor||0), 0);
+    const colTotalStr = colTotal > 0 ? 'R$ ' + colTotal.toLocaleString('pt-BR') : '';
     col.innerHTML = `
       <div class="kanban-col-header">
-        <div class="kanban-col-dot" style="background:${stage.dot}"></div>
-        <div class="kanban-col-title" style="color:${stage.dot}">${stage.label}</div>
-        <div class="kanban-count">${stLeads.length}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex:1">
+          <div class="kanban-col-dot" style="background:${stage.dot}"></div>
+          <div class="kanban-col-title" style="color:${stage.dot}">${stage.label}</div>
+          <div class="kanban-count">${stLeads.length}</div>
+        </div>
+        ${colTotalStr ? `<div style="font-size:10px;font-weight:600;color:var(--gold-light);font-family:var(--font-mono)">${colTotalStr}</div>` : ''}
       </div>
       <div class="kanban-cards">
         ${stLeads.length ? stLeads.map(l => `
@@ -3768,6 +3871,157 @@ window.openEmail = function() {
   }
 };
 
+
+
+// ═══════════════════════════════════════════════
+//  BUSCA GLOBAL
+// ═══════════════════════════════════════════════
+window.openGlobalSearch = function() {
+  document.getElementById('globalSearchOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('globalSearchInput').focus(), 100);
+};
+window.closeGlobalSearch = function() {
+  document.getElementById('globalSearchOverlay').classList.remove('open');
+  document.getElementById('globalSearchInput').value = '';
+  document.getElementById('globalSearchResults').innerHTML = '<div class="global-search-empty">Digite para buscar...</div>';
+};
+
+// Atalho Ctrl+K
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openGlobalSearch(); }
+  if (e.key === 'Escape') closeGlobalSearch();
+});
+
+window.runGlobalSearch = function(q) {
+  const el = document.getElementById('globalSearchResults');
+  if (!q || q.length < 2) { el.innerHTML = '<div class="global-search-empty">Digite pelo menos 2 caracteres...</div>'; return; }
+  q = q.toLowerCase();
+
+  const resultados = [];
+
+  // Buscar leads
+  leads.filter(l =>
+    l.nome.toLowerCase().includes(q) ||
+    (l.email||'').toLowerCase().includes(q) ||
+    (l.spec||'').toLowerCase().includes(q) ||
+    (l.curso||'').toLowerCase().includes(q) ||
+    (l.cidade||'').toLowerCase().includes(q)
+  ).slice(0,5).forEach(l => {
+    resultados.push({
+      icon: l.nome[0].toUpperCase(),
+      name: l.nome,
+      sub: (l.spec||'') + ' · ' + (l.status||''),
+      action: () => { closeGlobalSearch(); navigate('leads'); setTimeout(() => openDrawer(l.id), 300); }
+    });
+  });
+
+  // Buscar cursos
+  CURSOS.filter(c => c.nome.toLowerCase().includes(q)).slice(0,3).forEach(c => {
+    resultados.push({
+      icon: c.icon,
+      name: c.nome,
+      sub: 'Curso ISA · ' + c.modalidade,
+      action: () => { closeGlobalSearch(); navigate('cursos'); }
+    });
+  });
+
+  // Páginas
+  const paginas = [
+    { nome:'Dashboard', icon:'📊', page:'dashboard' },
+    { nome:'Leads', icon:'👥', page:'leads' },
+    { nome:'Funil de Vendas', icon:'🎯', page:'funil' },
+    { nome:'Relatórios', icon:'📈', page:'relatorios' },
+    { nome:'Follow-up', icon:'🔔', page:'followup' },
+    { nome:'Meu Perfil', icon:'👤', page:'perfil' },
+    { nome:'Importar Leads', icon:'📥', page:'importar' },
+    { nome:'Cursos ISA', icon:'🎓', page:'cursos' },
+  ];
+  paginas.filter(p => p.nome.toLowerCase().includes(q)).forEach(p => {
+    resultados.push({
+      icon: p.icon,
+      name: p.nome,
+      sub: 'Navegar para esta página',
+      action: () => { closeGlobalSearch(); navigate(p.page); }
+    });
+  });
+
+  if (resultados.length === 0) {
+    el.innerHTML = '<div class="global-search-empty">Nenhum resultado encontrado para "' + q + '"</div>';
+    return;
+  }
+
+  el.innerHTML = resultados.map((r, i) => `
+    <div class="global-search-result" onclick="_gsResults[${i}].action()">
+      <div class="global-search-result-icon">${r.icon}</div>
+      <div>
+        <div class="global-search-result-name">${r.name}</div>
+        <div class="global-search-result-sub">${r.sub}</div>
+      </div>
+    </div>`).join('');
+  window._gsResults = resultados;
+};
+
+// ═══════════════════════════════════════════════
+//  BOAS-VINDAS
+// ═══════════════════════════════════════════════
+function showWelcome(userName) {
+  const h = new Date().getHours();
+  const saudacao = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const primeiro = (userName||'').split(' ')[0] || 'usuário';
+  const pendentes = leads.filter(l => l.status === 'Novo' || l.status === 'Contato').length;
+  const negociando = leads.filter(l => l.status === 'Negociando').length;
+
+  let sub = '';
+  if (pendentes > 0) sub = pendentes + ' lead' + (pendentes>1?'s':'') + ' aguardando contato';
+  else if (negociando > 0) sub = negociando + ' negociação' + (negociando>1?'ões':'') + ' em andamento';
+  else sub = 'Tudo em dia! Continue assim 💪';
+
+  const el = document.getElementById('welcomeToast');
+  document.getElementById('welcomeTitle').textContent = saudacao + ', ' + primeiro + '!';
+  document.getElementById('welcomeSub').textContent = sub;
+
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+// ═══════════════════════════════════════════════
+//  GESTOS MOBILE — SWIPE NOS LEADS
+// ═══════════════════════════════════════════════
+function addSwipeGestures(el, leadId) {
+  let startX = 0, startY = 0, isDragging = false;
+  el.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    isDragging = false;
+  }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+      isDragging = true;
+      el.style.transform = `translateX(${Math.max(-80, Math.min(80, dx))}px)`;
+      el.style.transition = 'none';
+    }
+  }, { passive: true });
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    el.style.transition = 'transform .3s ease';
+    el.style.transform = 'translateX(0)';
+    if (!isDragging) return;
+    if (dx > 60) {
+      // Swipe direita → WhatsApp
+      const l = leads.find(x => x.id === leadId);
+      if (l && l.whats) {
+        const num = l.whats.replace(/\D/g,'');
+        const numBR = num.startsWith('55') ? num : '55'+num;
+        window.open('https://wa.me/'+numBR, '_blank');
+      }
+    } else if (dx < -60) {
+      // Swipe esquerda → abrir drawer
+      openDrawer(leadId);
+    }
+  });
+}
 
 // ═══════════════════════════════════════════════
 //  SCORE AUTOMÁTICO
@@ -4965,6 +5219,31 @@ function showToast(msg, type='success') {
     <div class="confirm-actions">
       <button class="btn-outline" onclick="closeConfirm()">Cancelar</button>
       <button class="btn-danger" id="confirmBtn">Excluir</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="welcome-toast" id="welcomeToast">
+  <div class="wt-emoji">👋</div>
+  <div class="wt-title" id="welcomeTitle">Bom dia!</div>
+  <div class="wt-sub" id="welcomeSub">Carregando...</div>
+</div>
+<!-- BUSCA GLOBAL -->
+<div class="global-search-overlay" id="globalSearchOverlay" onclick="if(event.target===this)closeGlobalSearch()">
+  <div class="global-search-box">
+    <div class="global-search-input-wrap">
+      <span style="font-size:18px">🔍</span>
+      <input type="text" id="globalSearchInput" placeholder="Buscar leads, cursos, relatórios..." oninput="runGlobalSearch(this.value)" autocomplete="off">
+      <span style="font-size:12px;color:var(--text3);cursor:pointer" onclick="closeGlobalSearch()">ESC</span>
+    </div>
+    <div class="global-search-results" id="globalSearchResults">
+      <div class="global-search-empty">Digite para buscar...</div>
+    </div>
+    <div class="global-search-hint">
+      <span>↑↓ navegar</span>
+      <span>Enter selecionar</span>
+      <span>ESC fechar</span>
     </div>
   </div>
 </div>

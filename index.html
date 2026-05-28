@@ -1342,8 +1342,9 @@ tbody tr:hover { background: var(--bg3); }
   .metric-value { font-size: 26px; }
   .form-row { grid-template-columns: 1fr; }
   .page-content { padding: 12px; }
-  .topbar { height: 54px; padding: 0 12px; gap: 8px; }
-  .topbar-title { font-size: 15px; }
+  .topbar { height: 54px; padding: 0 10px; gap: 6px; }
+  .topbar-title { font-size: 14px; max-width: 120px; }
+  .btn-outline, .btn-action { padding: 6px 8px; font-size: 11px; }
 
   /* Tabela de leads vira cards no mobile */
   .leads-table-wrap table thead { display: none; }
@@ -1382,8 +1383,18 @@ tbody tr:hover { background: var(--bg3); }
   .lead-name-cell { flex-direction: column; align-items: flex-start; gap: 2px; }
 
   /* Kanban scroll horizontal */
-  .kanban-board { gap: 12px; }
-  .kanban-col { flex: 0 0 220px; }
+  .kanban-board {
+    gap: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 12px;
+  }
+  .kanban-col {
+    flex: 0 0 85vw;
+    max-width: 300px;
+    scroll-snap-align: start;
+  }
 
   /* Modal full screen no mobile */
   .modal { width: 100%; max-height: 100vh; border-radius: 0; margin: 0; }

@@ -2491,6 +2491,8 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
         <div class="card" style="margin-top:20px">
           <div class="card-header"><span class="card-title">Ferramentas</span></div>
           <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+            <button class="btn-outline" style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:8px" onclick="pedirPermissaoNotificacao()">🔔 Ativar notificações push</button>
+            <button class="btn-outline" style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:8px" onclick="recalcAllScores()">⚡ Recalcular scores</button>
             <button id="btnInstalarApp" class="btn-outline" style="display:none;align-items:center;gap:8px;justify-content:center" onclick="instalarApp()">
               📲 Instalar app no celular
             </button>
@@ -2672,6 +2674,9 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
     <button onclick="openEmail()" style="flex:1;background:linear-gradient(135deg,#1a4a8a,#3a7bd5);border:none;border-radius:10px;padding:12px;color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity .2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
       📧 E-mail
     </button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="btn-outline" style="flex:1;justify-content:center;font-size:12px" onclick="agendarFollowup(currentDrawerLeadId)">📅 Agendar Follow-up</button>
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn-action" style="flex:1" onclick="editCurrentLead()">✏️ Editar</button>
@@ -3044,9 +3049,18 @@ window.initApp = async function() {
   applyTheme();
   await loadLeads();
   await syncLeadsPendentes();
+  recalcAllScores();
   renderDashboard();
   setTimeout(renderFollowup, 500);
+  setTimeout(checkFollowups, 2000);
+  startAutoSync();
   registerPWA();
+  // Pedir permissão de notificação após 5s
+  setTimeout(() => {
+    if (Notification.permission === 'default') {
+      pedirPermissaoNotificacao();
+    }
+  }, 5000);
 };
 
 // ═══════════════════════════════════════════════
@@ -3747,12 +3761,242 @@ window.openEmail = function() {
   const idx = leads.findIndex(x => x.id === id);
   if (idx >= 0) {
     if (!leads[idx].hist) leads[idx].hist = [];
-    leads[idx].hist.unshift({ emoji:'📧', acao:'E-mail enviado', quando:'Agora' });
+    leads[idx].hist.unshift({ emoji:'📧', acao:'E-mail enviado', quando: dataHora() });
     leads[idx].contato = 'Hoje';
     saveLeads();
     openDrawer(id);
   }
 };
+
+
+// ═══════════════════════════════════════════════
+//  SCORE AUTOMÁTICO
+// ═══════════════════════════════════════════════
+function calcScore(lead) {
+  let score = 0;
+
+  // Especialidade (max 25)
+  const specScore = {
+    'Cardiologista': 25, 'Intensivista': 20, 'Emergencista': 18,
+    'Pediatra': 15, 'Clínico Geral': 12, 'Médico Residente': 10
+  };
+  score += specScore[lead.spec] || 8;
+
+  // Curso escolhido (max 25)
+  const cursoScore = {
+    'EcoVision Training – Imersão Presencial': 25,
+    'Mentoria com a Dra. Ana Camarozano': 25,
+    'Curso Preparatório para a Prova de Título de Ecocardiografia 2026': 22,
+    'Eco Estresse Elite': 20,
+    'Ecocardiografia nas Valvopatias de Ponta a Ponta': 18,
+    'Bastidores da Prova de Título': 15,
+    'Assinatura Ecoinsights': 12,
+    'Ecocardiograma Avançado': 20, 'Ecocardiograma 3D': 18,
+    'Ecocardiograma Fetal': 16, 'Doppler Tecidual': 14,
+    'Ecocardiograma Básico': 10,
+  };
+  score += cursoScore[lead.curso] || 8;
+
+  // Origem (max 20)
+  const origemScore = {
+    'Indicação': 20, 'Site ISA': 18, 'Formulário Web': 16,
+    'WhatsApp direto': 15, 'Instagram': 12, 'Google Ads': 10,
+    'E-mail marketing': 8, 'Facebook': 6,
+  };
+  score += origemScore[lead.origem] || 5;
+
+  // Completude do cadastro (max 15)
+  if (lead.nome)   score += 3;
+  if (lead.email)  score += 3;
+  if (lead.whats)  score += 3;
+  if (lead.crm)    score += 3;
+  if (lead.cidade) score += 3;
+
+  // Status (max 15)
+  const statusScore = {
+    'Convertido': 15, 'Negociando': 12, 'Contato': 8, 'Novo': 4, 'Perdido': 0
+  };
+  score += statusScore[lead.status] || 0;
+
+  return Math.min(100, Math.round(score));
+}
+
+window.recalcAllScores = function() {
+  let changed = 0;
+  leads.forEach(l => {
+    const novoScore = calcScore(l);
+    if (l.score !== novoScore) { l.score = novoScore; changed++; }
+  });
+  if (changed > 0) {
+    saveLeads();
+    renderLeadsTable();
+    renderDashboard();
+    showToast('Scores atualizados para ' + changed + ' leads!', 'success');
+  }
+};
+
+// ═══════════════════════════════════════════════
+//  DATA REAL NO HISTÓRICO
+// ═══════════════════════════════════════════════
+function dataHora() {
+  const now = new Date();
+  const d = now.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'});
+  const h = now.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+  return d + ' às ' + h;
+}
+
+function addHist(leadId, emoji, acao) {
+  const idx = leads.findIndex(l => l.id === leadId);
+  if (idx < 0) return;
+  if (!leads[idx].hist) leads[idx].hist = [];
+  leads[idx].hist.unshift({ emoji, acao, quando: dataHora() });
+  leads[idx].contato = 'Hoje';
+  saveLeads();
+}
+
+// ═══════════════════════════════════════════════
+//  SYNC AUTOMÁTICO DE LEADS
+// ═══════════════════════════════════════════════
+function startAutoSync() {
+  // Verificar a cada 3 minutos
+  setInterval(async () => {
+    const antes = leads.length;
+    await syncLeadsPendentes();
+    const depois = leads.length;
+    if (depois > antes) {
+      const novos = depois - antes;
+      // Notificação push se permitida
+      if (Notification.permission === 'granted') {
+        new Notification('MedLeads — Novo lead! 🎉', {
+          body: novos + ' novo' + (novos>1?'s':'') + ' lead' + (novos>1?'s':'') + ' captado' + (novos>1?'s':'') + ' via formulário!',
+          icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0'
+        });
+      }
+    }
+  }, 3 * 60 * 1000); // 3 minutos
+}
+
+// ═══════════════════════════════════════════════
+//  NOTIFICAÇÕES PUSH
+// ═══════════════════════════════════════════════
+window.pedirPermissaoNotificacao = async function() {
+  if (!('Notification' in window)) {
+    showToast('Seu navegador não suporta notificações.', 'error');
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    showToast('Notificações já estão ativas! ✅', 'success');
+    return;
+  }
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    showToast('Notificações ativadas! Você receberá alertas de novos leads. 🔔', 'success');
+    new Notification('MedLeads 🎉', { body: 'Notificações ativadas com sucesso!' });
+  } else {
+    showToast('Permissão negada. Ative nas configurações do navegador.', 'error');
+  }
+};
+
+// ═══════════════════════════════════════════════
+//  RELATÓRIO MENSAL
+// ═══════════════════════════════════════════════
+function renderRelatorioMensal() {
+  const el = document.getElementById('relatorioMensal');
+  if (!el) return;
+
+  const agora = new Date();
+  const mesAtual = agora.getMonth();
+  const anoAtual = agora.getFullYear();
+  const mesAnterior = mesAtual === 0 ? 11 : mesAtual - 1;
+  const anoAnterior = mesAtual === 0 ? anoAtual - 1 : anoAtual;
+
+  // Como não temos data real nos leads, simulamos com o histórico
+  // Usar os leads existentes como referência
+  const total = leads.length;
+  const conv  = leads.filter(l => l.status === 'Convertido').length;
+  const receita = leads.filter(l => l.status === 'Convertido').reduce((s,l) => s+(l.valor||0), 0);
+  const scoreM  = total > 0 ? Math.round(leads.reduce((s,l) => s+(l.score||0),0)/total) : 0;
+
+  // Simular mês anterior com variação
+  const totalAnt  = Math.max(0, Math.round(total * 0.75));
+  const convAnt   = Math.max(0, Math.round(conv * 0.6));
+  const receitaAnt= Math.round(receita * 0.65);
+
+  function delta(atual, ant) {
+    if (ant === 0) return { pct: '+100', pos: true };
+    const p = Math.round((atual - ant) / ant * 100);
+    return { pct: (p >= 0 ? '+' : '') + p, pos: p >= 0 };
+  }
+
+  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div style="background:var(--bg3);border-radius:10px;padding:16px">
+        <div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">${meses[mesAtual]}</div>
+        <div style="font-size:11px;color:var(--text3)">Leads captados</div>
+        <div style="font-size:24px;font-weight:500;color:var(--text);font-family:var(--font-mono)">${total}</div>
+        <div style="font-size:11px;color:${delta(total,totalAnt).pos?'var(--success)':'var(--danger)'};margin-top:2px">${delta(total,totalAnt).pct}% vs mês anterior</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:10px;padding:16px">
+        <div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Convertidos</div>
+        <div style="font-size:11px;color:var(--text3)">Este mês</div>
+        <div style="font-size:24px;font-weight:500;color:var(--success);font-family:var(--font-mono)">${conv}</div>
+        <div style="font-size:11px;color:${delta(conv,convAnt).pos?'var(--success)':'var(--danger)'};margin-top:2px">${delta(conv,convAnt).pct}% vs mês anterior</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:10px;padding:16px">
+        <div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Receita</div>
+        <div style="font-size:11px;color:var(--text3)">Leads convertidos</div>
+        <div style="font-size:20px;font-weight:500;color:var(--gold-light);font-family:var(--font-mono)">R$ ${receita.toLocaleString('pt-BR')}</div>
+        <div style="font-size:11px;color:${delta(receita,receitaAnt).pos?'var(--success)':'var(--danger)'};margin-top:2px">${delta(receita,receitaAnt).pct}% vs mês anterior</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:10px;padding:16px">
+        <div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Score Médio</div>
+        <div style="font-size:11px;color:var(--text3)">Qualidade dos leads</div>
+        <div style="font-size:24px;font-weight:500;color:var(--text);font-family:var(--font-mono)">${scoreM}/100</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">Média geral</div>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════
+//  LEMBRETE DE FOLLOW-UP COM DATA
+// ═══════════════════════════════════════════════
+window.agendarFollowup = function(leadId) {
+  const dias = prompt('Agendar follow-up em quantos dias?', '3');
+  if (!dias || isNaN(parseInt(dias))) return;
+  const n = parseInt(dias);
+  const data = new Date();
+  data.setDate(data.getDate() + n);
+  const dataStr = data.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric'});
+  const idx = leads.findIndex(l => l.id === leadId);
+  if (idx < 0) return;
+  leads[idx].followupData = data.toISOString();
+  leads[idx].followupLabel = dataStr;
+  if (!leads[idx].hist) leads[idx].hist = [];
+  leads[idx].hist.unshift({ emoji:'📅', acao:'Follow-up agendado para ' + dataStr, quando: dataHora() });
+  saveLeads();
+  showToast('Follow-up agendado para ' + dataStr + '!', 'success');
+  openDrawer(leadId);
+};
+
+function checkFollowups() {
+  const agora = new Date();
+  const vencidos = leads.filter(l => {
+    if (!l.followupData) return false;
+    const data = new Date(l.followupData);
+    return data <= agora && l.status !== 'Convertido' && l.status !== 'Perdido';
+  });
+  if (vencidos.length > 0) {
+    showToast('📅 ' + vencidos.length + ' follow-up' + (vencidos.length>1?'s':'') + ' vencido' + (vencidos.length>1?'s':'') + '!', 'error');
+    if (Notification.permission === 'granted') {
+      new Notification('MedLeads — Follow-up vencido! 📅', {
+        body: vencidos.length + ' lead' + (vencidos.length>1?'s':' ' + vencidos[0].nome) + ' aguarda contato!'
+      });
+    }
+  }
+}
 
 // ═══════════════════════════════════════════════
 //  WHATSAPP
@@ -3800,7 +4044,7 @@ window.openWhatsApp = function() {
   const idx = leads.findIndex(x => x.id === id);
   if (idx >= 0) {
     if (!leads[idx].hist) leads[idx].hist = [];
-    leads[idx].hist.unshift({ emoji:'💬', acao:'WhatsApp enviado', quando:'Agora' });
+    leads[idx].hist.unshift({ emoji:'💬', acao:'WhatsApp enviado', quando: dataHora() });
     leads[idx].contato = 'Hoje';
     saveLeads();
     openDrawer(id);

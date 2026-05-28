@@ -3517,22 +3517,26 @@ window.saveLead = function() {
     const idx = leads.findIndex(l => l.id == editId);
     if (idx >= 0) {
       const prev = leads[idx];
-      leads[idx] = { ...prev, ...data };
+      leads[idx] = { ...prev, ...data, score: calcScore({...prev,...data}) };
       if (!leads[idx].hist) leads[idx].hist = [];
-      if (prev.status !== data.status) leads[idx].hist.unshift({ emoji:'🔄', acao:`Status: ${prev.status} → ${data.status}`, quando:'Agora' });
+      if (prev.status !== data.status) leads[idx].hist.unshift({ emoji:'🔄', acao:`Status: ${prev.status} → ${data.status}`, quando: dataHora() });
     }
     showToast('Lead atualizado!', 'success');
   } else {
-    const score = Math.floor(Math.random() * 40) + 40;
-    leads.unshift({ id: nextId++, ...data, score, hist:[{ emoji:'👋', acao:'Lead cadastrado manualmente', quando:'Agora' }] });
-    showToast('Lead adicionado!', 'success');
+    const novoLead = { id: nextId++, ...data, hist:[{ emoji:'👋', acao:'Lead cadastrado manualmente', quando: dataHora() }] };
+    novoLead.score = calcScore(novoLead);
+    leads.unshift(novoLead);
+    showToast('🎉 Lead adicionado!', 'success');
   }
 
-  saveLeads();
+  // Renderizar imediatamente antes de salvar (UI responsiva)
   closeModal();
   renderDashboard();
-  if (currentPage2 === 'leads') renderLeadsTable();
-  if (currentPage2 === 'funil') renderKanban();
+  renderLeadsTable();
+  renderKanban();
+
+  // Salvar em background
+  saveLeads();
 };
 
 // ═══════════════════════════════════════════════

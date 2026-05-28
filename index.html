@@ -4149,8 +4149,29 @@ function gerarRespostaLocal(pergunta, lead) {
     return `📈 **Resumo do Pipeline:**\n\n🔵 Novos: ${novos} leads\n🟡 Negociando: ${neg} leads\n✅ Convertidos: ${conv} leads\n💰 Receita: R$ ${receita.toLocaleString('pt-BR')}\n\n**Prioridade:** ${neg > 0 ? `Feche os ${neg} leads em negociação — são os mais próximos de converter!` : 'Foque em converter os leads novos para negociação.'}`;
   }
 
-  // Resposta padrão
-  return `💡 Posso ajudar com:\n\n• **Mensagens WhatsApp** personalizadas\n• **Análise** do perfil do lead\n• **Próximos passos** para cada status\n• **Resumo** do seu pipeline\n\nAbra um lead específico no drawer e use o botão 🤖 para análise personalizada!`;
+  // Fechamento / venda
+  if (q.includes('fecha') || q.includes('venda') || q.includes('converter') || q.includes('matric') || q.includes('compra') || q.includes('oferta') || q.includes('proposta')) {
+    if (!lead) return '🎯 Abra um lead específico para receber uma mensagem de fechamento personalizada.';
+    return `🎯 **Mensagem de fechamento para ${lead.nome}:**\n\n_Olá ${nome}! Tudo bem? 😊_\n\n_Vim fazer uma proposta especial para você sobre o *${curso}*._\n\n_Temos uma condição exclusiva disponível apenas hoje:_\n_✅ Acesso completo ao curso_\n_✅ Certificado reconhecido_\n_✅ Suporte da Dra. Ana Camarozano_\n_✅ Parcelamento facilitado_\n\n_Posso garantir sua vaga agora? São poucas disponíveis! 🔥_\n\nEnvie essa mensagem pelo WhatsApp clicando no botão verde no drawer!`;
+  }
+
+  // Objeção / dúvida
+  if (q.includes('objeç') || q.includes('resist') || q.includes('caro') || q.includes('preço') || q.includes('valor') || q.includes('dúvida') || q.includes('parcela')) {
+    if (!lead) return '💬 Abra um lead específico para receber sugestões de como contornar objeções.';
+    return `💬 **Como contornar objeções de ${lead.nome}:**\n\n**Se disser que está caro:**\n_"${nome}, entendo sua preocupação. Mas pense: um único paciente bem avaliado já paga o curso. Além disso, temos parcelamento em até 12x."_\n\n**Se pedir para pensar:**\n_"Claro! Só quero te avisar que as vagas são limitadas. Posso reservar a sua por 24h enquanto você decide?"_\n\n**Se comparar com outro curso:**\n_"Compreendo! O diferencial do ${curso} é a Dra. Ana Camarozano — referência nacional em ecocardiografia."_`;
+  }
+
+  // Reativação
+  if (q.includes('reativ') || q.includes('sumiu') || q.includes('sem resposta') || q.includes('não responde') || q.includes('perdido')) {
+    if (!lead) return '🔄 Abra um lead específico para receber sugestões de reativação.';
+    return `🔄 **Estratégia de reativação para ${lead.nome}:**\n\n**Mensagem 1 — Curiosidade:**\n_"${nome}, tudo bem? Vi algo que pode te interessar sobre ${curso}. Posso compartilhar?"_\n\n**Mensagem 2 — Novidade:**\n_"Oi ${nome}! Abrimos uma nova turma de ${curso} com condições especiais. Lembrei de você!"_\n\n**Mensagem 3 — Última tentativa:**\n_"${nome}, não quero te incomodar. Só queria saber se ainda tem interesse no ${curso} ou posso te tirar da lista? 😊"_`;
+  }
+
+  // Resposta padrão — mas agora com contexto do lead
+  if (lead) {
+    return `💡 Posso ajudar com ${lead.nome}:\n\n• "**Gerar mensagem WhatsApp**" — mensagem personalizada\n• "**Analisar perfil**" — análise completa\n• "**Próximo passo**" — o que fazer agora\n• "**Mensagem de fechamento**" — para converter\n• "**Como contornar objeções**" — lidar com resistências\n• "**Estratégia de reativação**" — se sumiu\n\nO que prefere?`;
+  }
+  return `💡 Posso ajudar com:\n\n• **Mensagens WhatsApp** personalizadas\n• **Análise** do perfil do lead\n• **Próximos passos** para cada status\n• **Resumo** do seu pipeline\n• **Fechamento** de vendas\n• **Objeções** e resistências\n\nAbra um lead no drawer e clique em 🤖 para análise personalizada!`;
 }
 
 // ═══════════════════════════════════════════════

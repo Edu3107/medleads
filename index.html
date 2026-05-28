@@ -1991,6 +1991,188 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
 .welcome-toast .wt-emoji { font-size: 28px; margin-bottom: 6px; }
 .welcome-toast .wt-title { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 600; color: var(--text); }
 .welcome-toast .wt-sub   { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+/* ── ASSISTENTE IA ── */
+.ia-modal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.ia-modal.open { display: flex; }
+.ia-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 640px; max-width: 100%;
+  max-height: 85vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6), var(--shadow-gold);
+  animation: fadeUp .25s ease both;
+}
+.ia-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border2);
+  display: flex; align-items: center; gap: 12px;
+}
+.ia-avatar {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.ia-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.ia-sub   { font-size: 12px; color: var(--text3); }
+.ia-messages {
+  flex: 1; overflow-y: auto; padding: 16px 20px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.ia-msg {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.ia-msg.user {
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+  color: #0A0A0B;
+  align-self: flex-end;
+  border-radius: 12px 12px 4px 12px;
+  font-weight: 500;
+}
+.ia-msg.ai {
+  background: var(--bg3);
+  color: var(--text);
+  align-self: flex-start;
+  border-radius: 12px 12px 12px 4px;
+  border: 1px solid var(--border2);
+}
+.ia-msg.loading {
+  background: var(--bg3);
+  color: var(--text3);
+  align-self: flex-start;
+}
+.ia-input-wrap {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border2);
+  display: flex; gap: 10px; align-items: flex-end;
+}
+.ia-input {
+  flex: 1;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  outline: none;
+  resize: none;
+  max-height: 100px;
+  transition: border-color .2s;
+}
+.ia-input:focus { border-color: var(--gold); }
+.ia-send {
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+  border: none; border-radius: 10px;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  transition: opacity .2s;
+}
+.ia-send:hover { opacity: .85; }
+.ia-send:disabled { opacity: .4; cursor: not-allowed; }
+.ia-suggestions {
+  padding: 0 20px 12px;
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.ia-sugg-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 11px;
+  color: var(--text2);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: border-color .2s, color .2s;
+}
+.ia-sugg-btn:hover { border-color: var(--gold); color: var(--gold-light); }
+
+/* ── TEMPLATES ── */
+.templates-modal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.templates-modal.open { display: flex; }
+.templates-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 560px; max-width: 100%;
+  max-height: 80vh;
+  display: flex; flex-direction: column;
+  animation: fadeUp .25s ease both;
+}
+.template-item {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border2);
+  cursor: pointer;
+  transition: background .15s;
+}
+.template-item:hover { background: var(--bg3); }
+.template-item:last-child { border-bottom: none; }
+.template-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.template-preview { font-size: 12px; color: var(--text3); line-height: 1.4; }
+.template-tag {
+  display: inline-block;
+  font-size: 10px; font-weight: 600;
+  padding: 2px 8px; border-radius: 20px;
+  margin-bottom: 6px;
+}
+
+/* ── MAPA DE CALOR ── */
+.heatmap-wrap {
+  position: relative;
+  background: var(--bg3);
+  border-radius: 10px;
+  overflow: hidden;
+  padding: 16px;
+}
+.heatmap-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: default;
+  transition: transform .15s;
+}
+.heatmap-state:hover { transform: scale(1.1); }
+
+/* ── PREVISÃO RECEITA ── */
+.previsao-card {
+  background: linear-gradient(135deg, var(--surface), rgba(139,105,20,.08));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.previsao-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold-dark), var(--gold-light));
+}
 </style>
 <script src="https://apis.google.com/js/api.js" defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -2208,6 +2390,7 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
       <button class="hamburger" onclick="toggleSidebar()">☰</button>
       <div class="topbar-title" id="topbarTitle">Dashboard</div>
       <div class="topbar-actions">
+        <button class="btn-outline" onclick="openIA()" title="Assistente IA">🤖 IA</button>
         <button class="btn-outline" onclick="openGlobalSearch()" title="Busca global (Ctrl+K)">🔍</button>
         <button class="btn-outline" onclick="toggleTheme()" id="btnTheme" title="Alternar tema">🌙</button>
         <button class="btn-outline" onclick="openSheetsModal()" title="Exportar para Google Sheets">📊 Sheets</button>
@@ -3877,6 +4060,301 @@ window.openEmail = function() {
 
 
 
+
+// ═══════════════════════════════════════════════
+//  ASSISTENTE IA DE VENDAS
+// ═══════════════════════════════════════════════
+let _iaLeadId = null;
+let _iaHistory = [];
+
+window.openIA = function() {
+  _iaLeadId = null;
+  document.getElementById('iaLeadContext').textContent = 'Powered by Claude · ISA Digital';
+  document.getElementById('iaModal').classList.add('open');
+  resetIAMessages();
+};
+
+window.openIAWithLead = function() {
+  const id = currentDrawerLeadId;
+  if (!id) return;
+  const l = leads.find(x => x.id === id);
+  if (!l) return;
+  _iaLeadId = id;
+  document.getElementById('iaLeadContext').textContent = 'Analisando: ' + l.nome;
+  document.getElementById('iaModal').classList.add('open');
+  resetIAMessages();
+  // Mensagem inicial automática com contexto do lead
+  const ctx = `Lead: ${l.nome} | Especialidade: ${l.spec||'—'} | Curso: ${l.curso||'—'} | Status: ${l.status} | Score: ${l.score}/100 | Origem: ${l.origem||'—'} | Valor: R$ ${l.valor||0}`;
+  addIAMsg('ai', `📋 Lead carregado: **${l.nome}**\n\nEspecialidade: ${l.spec||'—'}\nCurso de interesse: ${l.curso||'—'}\nStatus atual: ${l.status}\nScore: ${l.score}/100\n\nComo posso ajudar com este lead?`);
+};
+
+window.closeIA = function() {
+  document.getElementById('iaModal').classList.remove('open');
+};
+
+function resetIAMessages() {
+  _iaHistory = [];
+  document.getElementById('iaMessages').innerHTML = `
+    <div class="ia-msg ai">👋 Olá! Sou seu assistente de vendas da ISA Digital. Posso analisar seus leads, sugerir abordagens, criar mensagens personalizadas e ajudar a fechar mais matrículas. Como posso ajudar?</div>`;
+}
+
+function addIAMsg(type, text) {
+  const el = document.getElementById('iaMessages');
+  const div = document.createElement('div');
+  div.className = 'ia-msg ' + type;
+  div.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+  return div;
+}
+
+window.iaSuggestion = function(btn) {
+  document.getElementById('iaInput').value = btn.textContent;
+  sendIA();
+};
+
+window.sendIA = async function() {
+  const input = document.getElementById('iaInput');
+  const q = input.value.trim();
+  if (!q) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('iaSendBtn').disabled = true;
+  document.getElementById('iaSuggestions').style.display = 'none';
+
+  addIAMsg('user', q);
+
+  // Loading
+  const loadDiv = addIAMsg('loading', '⏳ Analisando...');
+
+  // Contexto dos leads para o Claude
+  const leadAtual = _iaLeadId ? leads.find(l => l.id === _iaLeadId) : null;
+  const statsCtx = `Pipeline MedLeads: ${leads.length} leads total, ${leads.filter(l=>l.status==='Convertido').length} convertidos, ${leads.filter(l=>l.status==='Negociando').length} negociando. Receita: R$ ${leads.filter(l=>l.status==='Convertido').reduce((s,l)=>s+(l.valor||0),0).toLocaleString('pt-BR')}.`;
+  const leadCtx = leadAtual ? `Lead atual: ${leadAtual.nome}, ${leadAtual.spec||'—'}, interesse em ${leadAtual.curso||'—'}, status ${leadAtual.status}, score ${leadAtual.score}/100, origem ${leadAtual.origem||'—'}, valor R$ ${leadAtual.valor||0}. Histórico: ${(leadAtual.hist||[]).slice(0,3).map(h=>h.acao).join('; ')}.` : '';
+
+  const systemPrompt = `Você é um assistente especializado em vendas de cursos médicos para a ISA Digital (Instituto Saber e Aprender), focada em ecocardiografia. Você conhece o CRM MedLeads e ajuda a equipe comercial a converter leads de médicos em matrículas.
+
+Contexto da empresa: ISA Digital oferece cursos de Ecocardiografia (Básico, Avançado, Fetal, 3D, Doppler Tecidual), Eco Estresse Elite, EcoVision Training, Bastidores da Prova de Título, Mentoria com Dra. Ana Camarozano e Assinatura Ecoinsights.
+
+${statsCtx}
+${leadCtx}
+
+Responda em português brasileiro, seja direto e prático. Use formatação simples. Quando sugerir mensagens de WhatsApp, use o formato adequado para mensagem de texto.`;
+
+  _iaHistory.push({ role: 'user', content: q });
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: _iaHistory
+      })
+    });
+
+    const data = await resp.json();
+    const text = data.content?.[0]?.text || 'Erro ao processar resposta.';
+
+    loadDiv.remove();
+    addIAMsg('ai', text);
+    _iaHistory.push({ role: 'assistant', content: text });
+
+  } catch(e) {
+    loadDiv.remove();
+    addIAMsg('ai', '❌ Erro ao conectar com a IA. Verifique sua conexão e tente novamente.');
+  }
+
+  document.getElementById('iaSendBtn').disabled = false;
+};
+
+// ═══════════════════════════════════════════════
+//  TEMPLATES DE MENSAGEM
+// ═══════════════════════════════════════════════
+const DEFAULT_TEMPLATES = [
+  { id:1, nome:'Primeiro contato — Novo lead', tag:'Novo', tagColor:'#5B8DEF',
+    texto:'Olá {{nome}}! Tudo bem? 😊\n\nSou da equipe ISA Digital e vi que você tem interesse no curso de *{{curso}}*.\n\nPosso te passar mais detalhes sobre o conteúdo e as próximas turmas?' },
+  { id:2, nome:'Follow-up — Sem resposta', tag:'Contato', tagColor:'#E8A94C',
+    texto:'Olá {{nome}}, tudo bem? 👋\n\nPassando para saber se você teve a oportunidade de pensar no curso de *{{curso}}* da ISA Digital.\n\nEstou à disposição para esclarecer qualquer dúvida!' },
+  { id:3, nome:'Proposta — Negociando', tag:'Negociando', tagColor:'#C9A84C',
+    texto:'{{nome}}, preparei uma condição especial para você! 🎯\n\nO curso *{{curso}}* está com turma abrindo em breve. Podemos garantir sua vaga agora com as melhores condições de pagamento.\n\nPodemos conversar hoje?' },
+  { id:4, nome:'Reativação — Lead perdido', tag:'Perdido', tagColor:'#E05555',
+    texto:'Olá {{nome}}! Tudo bem? 😊\n\nSei que o momento não foi o ideal antes, mas queria te contar que temos novidades no curso de *{{curso}}*.\n\nTem 5 minutinhos para conversar?' },
+  { id:5, nome:'Pós-matrícula — Boas-vindas', tag:'Convertido', tagColor:'#4CAF7A',
+    texto:'Parabéns, {{nome}}! 🎉\n\nSua matrícula no curso *{{curso}}* foi confirmada com sucesso!\n\nEm breve você receberá todas as informações de acesso. Qualquer dúvida, estamos aqui! 🙌' },
+];
+
+let _templates = JSON.parse(localStorage.getItem('medleads_templates') || 'null') || DEFAULT_TEMPLATES;
+let _templateLeadId = null;
+
+function saveTemplates() {
+  localStorage.setItem('medleads_templates', JSON.stringify(_templates));
+}
+
+window.openTemplatesForLead = function() {
+  _templateLeadId = currentDrawerLeadId;
+  renderTemplatesList();
+  document.getElementById('templatesModal').classList.add('open');
+};
+
+window.closeTemplates = function() {
+  document.getElementById('templatesModal').classList.remove('open');
+};
+
+function renderTemplatesList() {
+  const el = document.getElementById('templatesList');
+  el.innerHTML = _templates.map(t => `
+    <div class="template-item" onclick="useTemplate(${t.id})">
+      <span class="template-tag" style="background:${t.tagColor}22;color:${t.tagColor}">${t.tag}</span>
+      <div class="template-name">${t.nome}</div>
+      <div class="template-preview">${t.texto.replace(/\n/g,' ').substring(0,80)}...</div>
+    </div>`).join('');
+}
+
+window.useTemplate = function(id) {
+  const t = _templates.find(x => x.id === id);
+  if (!t) return;
+  const l = _templateLeadId ? leads.find(x => x.id === _templateLeadId) : null;
+
+  let msg = t.texto;
+  if (l) {
+    const primeiro = l.nome.replace(/^Dr[a]?\.?\s*/i,'').split(' ')[0];
+    msg = msg.replace(/{{nome}}/g, primeiro).replace(/{{curso}}/g, l.curso||'nossos cursos');
+  }
+
+  closeTemplates();
+
+  if (l && l.whats) {
+    const num = l.whats.replace(/\D/g,'');
+    const numBR = num.startsWith('55') ? num : '55'+num;
+    window.open('https://wa.me/'+numBR+'?text='+encodeURIComponent(msg), '_blank');
+  } else {
+    navigator.clipboard.writeText(msg).then(() => showToast('Template copiado!', 'success'));
+  }
+};
+
+window.novoTemplate = function() {
+  const nome = prompt('Nome do template:');
+  if (!nome) return;
+  const texto = prompt('Texto (use {{nome}} e {{curso}} como variáveis):');
+  if (!texto) return;
+  _templates.push({ id: Date.now(), nome, tag: 'Geral', tagColor: '#C9A84C', texto });
+  saveTemplates();
+  renderTemplatesList();
+  showToast('Template criado!', 'success');
+};
+
+// ═══════════════════════════════════════════════
+//  PREVISÃO DE RECEITA
+// ═══════════════════════════════════════════════
+function renderPrevisao() {
+  const el = document.getElementById('previsaoReceita');
+  if (!el) return;
+
+  const convertidos = leads.filter(l => l.status === 'Convertido');
+  const negociando  = leads.filter(l => l.status === 'Negociando');
+  const contato     = leads.filter(l => l.status === 'Contato');
+
+  const receitaReal = convertidos.reduce((s,l) => s+(l.valor||0), 0);
+
+  // Taxa de conversão histórica
+  const txConv = leads.length > 0 ? convertidos.length / leads.length : 0.15;
+
+  // Previsão: negociando tem 40% de chance, contato tem 15%
+  const prevNeg  = negociando.reduce((s,l) => s+(l.valor||0)*0.40, 0);
+  const prevCont = contato.reduce((s,l) => s+(l.valor||0)*0.15, 0);
+  const prevTotal = receitaReal + prevNeg + prevCont;
+
+  // Ticket médio
+  const ticket = convertidos.length > 0 ? Math.round(receitaReal / convertidos.length) : 0;
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <div style="font-size:24px">📈</div>
+      <div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3)">Previsão de Receita</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">Baseado no pipeline atual</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px">
+      <div>
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Realizado</div>
+        <div style="font-family:var(--font-mono);font-size:20px;font-weight:500;color:var(--success)">R$ ${receitaReal.toLocaleString('pt-BR')}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Em negociação</div>
+        <div style="font-family:var(--font-mono);font-size:20px;font-weight:500;color:var(--gold-light)">+R$ ${Math.round(prevNeg).toLocaleString('pt-BR')}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Projeção total</div>
+        <div style="font-family:var(--font-mono);font-size:20px;font-weight:500;color:var(--text)">R$ ${Math.round(prevTotal).toLocaleString('pt-BR')}</div>
+      </div>
+    </div>
+    <div style="height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-bottom:16px">
+      <div style="height:100%;background:linear-gradient(90deg,var(--success),var(--gold-light));width:${Math.min(100,Math.round(receitaReal/Math.max(prevTotal,1)*100))}%;border-radius:2px;transition:width 1s ease"></div>
+    </div>
+    <div style="display:flex;gap:20px">
+      <div style="font-size:12px;color:var(--text3)">Ticket médio: <strong style="color:var(--text2)">R$ ${ticket.toLocaleString('pt-BR')}</strong></div>
+      <div style="font-size:12px;color:var(--text3)">Taxa de conversão: <strong style="color:var(--text2)">${(txConv*100).toFixed(1)}%</strong></div>
+      <div style="font-size:12px;color:var(--text3)">${negociando.length} em negociação</div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════
+//  MAPA DE CALOR POR ESTADO
+// ═══════════════════════════════════════════════
+function renderMapaCalor() {
+  const el = document.getElementById('mapaCalor');
+  if (!el) return;
+
+  // Contar leads por UF
+  const ufCount = {};
+  leads.forEach(l => {
+    if (!l.cidade) return;
+    const parts = l.cidade.split(',');
+    const uf = parts[parts.length-1]?.trim().toUpperCase();
+    if (uf && uf.length === 2) ufCount[uf] = (ufCount[uf]||0)+1;
+  });
+
+  if (Object.keys(ufCount).length === 0) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text3);padding:20px">Nenhum lead com cidade cadastrada ainda.</div>';
+    return;
+  }
+
+  const maxCount = Math.max(...Object.values(ufCount));
+  const sorted = Object.entries(ufCount).sort((a,b) => b[1]-a[1]);
+
+  // Cores por intensidade
+  function getColor(n) {
+    const pct = n / maxCount;
+    if (pct > 0.7) return { bg:'rgba(201,168,76,.4)', text:'#E8C97A' };
+    if (pct > 0.4) return { bg:'rgba(201,168,76,.2)', text:'#C9A84C' };
+    return { bg:'rgba(201,168,76,.08)', text:'#8B6914' };
+  }
+
+  el.innerHTML = `
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+      ${sorted.map(([uf,n]) => {
+        const c = getColor(n);
+        return `<div class="heatmap-state" style="background:${c.bg};color:${c.text};padding:8px 12px;min-width:60px;flex-direction:column;gap:2px" title="${uf}: ${n} lead${n>1?'s':''}">
+          <span style="font-size:13px;font-weight:700">${uf}</span>
+          <span style="font-size:10px">${n} lead${n>1?'s':''}</span>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      ${sorted.slice(0,3).map(([uf,n],i) => `
+        <div style="font-size:12px;color:var(--text3)">
+          ${['🥇','🥈','🥉'][i]} ${uf}: <strong style="color:var(--text2)">${n} lead${n>1?'s':''}</strong>
+        </div>`).join('')}
+    </div>
+  `;
+}
+
 // ═══════════════════════════════════════════════
 //  BUSCA GLOBAL
 // ═══════════════════════════════════════════════
@@ -5213,6 +5691,53 @@ function showToast(msg, type='success') {
 </script>
 
 
+
+
+<!-- MODAL ASSISTENTE IA -->
+<div class="ia-modal" id="iaModal">
+  <div class="ia-box">
+    <div class="ia-header">
+      <div class="ia-avatar">🤖</div>
+      <div>
+        <div class="ia-title">Assistente IA de Vendas</div>
+        <div class="ia-sub" id="iaLeadContext">Powered by Claude · ISA Digital</div>
+      </div>
+      <button onclick="closeIA()" style="margin-left:auto;background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div class="ia-messages" id="iaMessages">
+      <div class="ia-msg ai">👋 Olá! Sou seu assistente de vendas. Posso analisar seus leads, sugerir abordagens personalizadas, criar mensagens de WhatsApp e ajudar a fechar mais negócios. Como posso ajudar?</div>
+    </div>
+    <div class="ia-suggestions" id="iaSuggestions">
+      <button class="ia-sugg-btn" onclick="iaSuggestion(this)">Como abordar este lead?</button>
+      <button class="ia-sugg-btn" onclick="iaSuggestion(this)">Criar mensagem WhatsApp</button>
+      <button class="ia-sugg-btn" onclick="iaSuggestion(this)">Analisar perfil do lead</button>
+      <button class="ia-sugg-btn" onclick="iaSuggestion(this)">Próximo passo ideal</button>
+    </div>
+    <div class="ia-input-wrap">
+      <textarea class="ia-input" id="iaInput" rows="1" placeholder="Pergunte sobre seus leads ou peça ajuda para vender..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendIA()}"></textarea>
+      <button class="ia-send" id="iaSendBtn" onclick="sendIA()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0A0A0B" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TEMPLATES -->
+<div class="templates-modal" id="templatesModal">
+  <div class="templates-box">
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:15px;font-weight:600;color:var(--text)">📝 Templates de Mensagem</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">Selecione um template para usar</div>
+      </div>
+      <button onclick="closeTemplates()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">×</button>
+    </div>
+    <div style="padding:12px 20px;border-bottom:1px solid var(--border2);display:flex;gap:8px">
+      <button class="btn-action" style="font-size:12px;padding:7px 14px" onclick="novoTemplate()">+ Novo template</button>
+    </div>
+    <div style="overflow-y:auto;flex:1" id="templatesList"></div>
+  </div>
+</div>
 
 <!-- MODAL CONFIRMAR EXCLUSÃO -->
 <div class="confirm-modal" id="confirmModal">

@@ -5287,6 +5287,233 @@ window.exportPDF = function() {
   win.document.close();
   setTimeout(function(){ win.print(); }, 600);
 };
+
+// ═══════════════════════════════════════════════
+//  WHATSAPP
+// ═══════════════════════════════════════════════
+window.openWhatsApp = function() {
+  const id = currentDrawerLeadId;
+  if (!id) return;
+  const l = leads.find(x => x.id === id);
+  if (!l) return;
+  if (!l.whats) { showToast('Este lead não tem WhatsApp cadastrado.', 'error'); return; }
+  const num = l.whats.replace(/\D/g, '');
+  const numBR = num.startsWith('55') ? num : '55' + num;
+  const nome = l.nome.replace(/^Dr[a]?\.?\s*/i, '').split(' ')[0];
+  const curso = l.curso || 'nossos cursos';
+  const msgs = {
+    'Novo':       `Olá ${nome}! Tudo bem? 😊\n\nSou da equipe ISA Digital e vi que você tem interesse no curso de *${curso}*.\n\nPosso te passar mais detalhes?`,
+    'Contato':    `Olá ${nome}, tudo bem? 👋\n\nPassando para dar continuidade sobre o *${curso}*.\n\nTem alguma dúvida que posso esclarecer?`,
+    'Negociando': `${nome}, preparei uma condição especial para você! 🎯\n\nO *${curso}* está com turma abrindo em breve.\n\nPodemos fechar hoje?`,
+    'Perdido':    `Olá ${nome}! Temos novidades no *${curso}* que podem te interessar.\n\nTem 5 minutinhos?`,
+  };
+  const msg = msgs[l.status] || msgs['Novo'];
+  window.open('https://wa.me/' + numBR + '?text=' + encodeURIComponent(msg), '_blank');
+  const idx = leads.findIndex(x => x.id === id);
+  if (idx >= 0) {
+    if (!leads[idx].hist) leads[idx].hist = [];
+    leads[idx].hist.unshift({ emoji:'💬', acao:'WhatsApp enviado', quando: dataHora() });
+    leads[idx].contato = 'Hoje';
+    saveLeads(); openDrawer(id);
+  }
+};
+
+window.openEmail = function() {
+  const id = currentDrawerLeadId;
+  if (!id) return;
+  const l = leads.find(x => x.id === id);
+  if (!l || !l.email) { showToast('Este lead não tem e-mail cadastrado.', 'error'); return; }
+  const subject = encodeURIComponent('Curso ' + (l.curso||'ISA Digital') + ' — ISA Digital');
+  const body = encodeURIComponent('Olá ' + l.nome + ',\n\nTudo bem? Sou da equipe ISA Digital e gostaria de falar sobre o curso de ' + (l.curso||'nossos cursos') + '.\n\nAtenciosamente,\nEquipe ISA Digital');
+  window.open('mailto:' + l.email + '?subject=' + subject + '&body=' + body);
+};
+
+// ═══════════════════════════════════════════════
+//  GOOGLE SHEETS EXPORT
+// ═══════════════════════════════════════════════
+const GSHEETS_CLIENT_ID = '648048541810-h2de1ujp36tnl5ukdfue1lbthe54q3ls.apps.googleusercontent.com';
+const GSHEETS_SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
+let _gsAccessToken = null;
+
+window.openSheetsModal = function() {
+  document.getElementById('sheetsModal').style.display = 'flex';
+  document.getElementById('sheetsModal').classList.add('open');
+  setSheetsStatus('Clique em "Conectar e Exportar" para começar.', '');
+};
+window.closeSheetsModal = function() {
+  const modal = document.getElementById('sheetsModal');
+  if (modal) { modal.style.display = 'none'; modal.classList.remove('open'); }
+};
+function setSheetsStatus(msg, type) {
+  const el = document.getElementById('sheetsStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'sheets-status' + (type ? ' ' + type : '');
+}
+window.exportToSheets = async function() {
+  const btn = document.getElementById('btnSheetsExport');
+  btn.disabled = true; btn.style.opacity = '.6';
+  setSheetsStatus('🔐 Conectando com Google...', '');
+  try {
+    _gsAccessToken = await getGoogleToken();
+    setSheetsStatus('📋 Criando planilha...', '');
+    const sheetId = await createSpreadsheet();
+    setSheetsStatus('📝 Enviando ' + leads.length + ' leads...', '');
+    await populateSpreadsheet(sheetId);
+    const url = 'https://docs.google.com/spreadsheets/d/' + sheetId;
+    setSheetsStatus('✅ Planilha criada! Abrindo...', 'success');
+    setTimeout(() => window.open(url, '_blank'), 1000);
+    showToast('Leads exportados para o Google Sheets!', 'success');
+  } catch(e) {
+    setSheetsStatus('❌ Erro: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.style.opacity = '1';
+  }
+};
+function getGoogleToken() {
+  return new Promise((resolve, reject) => {
+    if (typeof google === 'undefined' || !google.accounts) {
+      reject(new Error('SDK do Google não carregou. Recarregue a página.'));
+      return;
+    }
+    try {
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: GSHEETS_CLIENT_ID,
+        scope: GSHEETS_SCOPES,
+        callback: (resp) => {
+          if (resp.error) reject(new Error(resp.error));
+          else resolve(resp.access_token);
+        }
+      });
+      client.requestAccessToken({ prompt: 'consent' });
+    } catch(e) { reject(e); }
+  });
+}
+async function createSpreadsheet() {
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const res = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + _gsAccessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ properties: { title: 'MedLeads — Leads ' + hoje },
+      sheets: [{ properties: { title: 'Leads' } }, { properties: { title: 'Resumo' } }] })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || 'Erro ao criar planilha');
+  return data.spreadsheetId;
+}
+async function populateSpreadsheet(sheetId) {
+  const hdrs = ['Nome','CRM','E-mail','WhatsApp','Especialidade','Cidade','Curso','Status','Origem','Valor (R$)','Score','Observações'];
+  const rows = leads.map(l => [l.nome||'',l.crm||'',l.email||'',l.whats||'',l.spec||'',l.cidade||'',l.curso||'',l.status||'',l.origem||'',l.valor||0,l.score||0,l.obs||'']);
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchUpdate`, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + _gsAccessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ valueInputOption: 'USER_ENTERED', data: [
+      { range: 'Leads!A1', values: [['MedLeads — Relatório'],['ISA Digital | ' + hoje],[],hdrs,...rows] }
+    ]})
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  EXPORTAR EXCEL
+// ═══════════════════════════════════════════════
+window.exportXLSX = function() {
+  try {
+    const b64 = _XLSX_B64;
+    const bin = atob(b64);
+    const buf = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'MedLeads_' + new Date().toLocaleDateString('pt-BR').replace(/\//g,'-') + '.xlsx';
+    a.click(); URL.revokeObjectURL(url);
+    showToast('Excel baixado!', 'success');
+  } catch(e) { showToast('Erro ao exportar Excel.', 'error'); }
+};
+
+// ═══════════════════════════════════════════════
+//  BUSCA GLOBAL
+// ═══════════════════════════════════════════════
+window.openGlobalSearch = function() {
+  document.getElementById('globalSearchOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('globalSearchInput').focus(), 100);
+};
+window.closeGlobalSearch = function() {
+  document.getElementById('globalSearchOverlay').classList.remove('open');
+  document.getElementById('globalSearchInput').value = '';
+  document.getElementById('globalSearchResults').innerHTML = '<div class="global-search-empty">Digite para buscar...</div>';
+};
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openGlobalSearch(); }
+  if (e.key === 'Escape') closeGlobalSearch();
+});
+window.runGlobalSearch = function(q) {
+  const el = document.getElementById('globalSearchResults');
+  if (!q || q.length < 2) { el.innerHTML = '<div class="global-search-empty">Digite pelo menos 2 caracteres...</div>'; return; }
+  q = q.toLowerCase();
+  const resultados = [];
+  leads.filter(l => l.nome.toLowerCase().includes(q) || (l.email||'').toLowerCase().includes(q) || (l.spec||'').toLowerCase().includes(q)).slice(0,5).forEach(l => {
+    resultados.push({ icon: l.nome[0].toUpperCase(), name: l.nome, sub: (l.spec||'') + ' · ' + (l.status||''), action: () => { closeGlobalSearch(); navigate('leads'); setTimeout(() => openDrawer(l.id), 300); } });
+  });
+  CURSOS.filter(c => c.nome.toLowerCase().includes(q)).slice(0,3).forEach(c => {
+    resultados.push({ icon: c.icon, name: c.nome, sub: 'Curso ISA · ' + c.modalidade, action: () => { closeGlobalSearch(); navigate('cursos'); } });
+  });
+  [['Dashboard','📊','dashboard'],['Leads','👥','leads'],['Funil de Vendas','🎯','funil'],['Relatórios','📈','relatorios'],['Follow-up','🔔','followup'],['Meu Perfil','👤','perfil']].filter(p => p[0].toLowerCase().includes(q)).forEach(p => {
+    resultados.push({ icon: p[1], name: p[0], sub: 'Navegar para esta página', action: () => { closeGlobalSearch(); navigate(p[2]); } });
+  });
+  if (resultados.length === 0) { el.innerHTML = '<div class="global-search-empty">Nenhum resultado para "' + q + '"</div>'; return; }
+  el.innerHTML = resultados.map((r,i) => `<div class="global-search-result" onclick="_gsResults[${i}].action()"><div class="global-search-result-icon">${r.icon}</div><div><div class="global-search-result-name">${r.name}</div><div class="global-search-result-sub">${r.sub}</div></div></div>`).join('');
+  window._gsResults = resultados;
+};
+
+// ═══════════════════════════════════════════════
+//  TEMPLATES DE MENSAGEM
+// ═══════════════════════════════════════════════
+const DEFAULT_TEMPLATES = [
+  { id:1, nome:'Primeiro contato', tag:'Novo', tagColor:'#5B8DEF', texto:'Olá {{nome}}! Tudo bem? 😊\n\nSou da equipe ISA Digital e vi que você tem interesse no *{{curso}}*.\n\nPosso te passar mais detalhes?' },
+  { id:2, nome:'Follow-up', tag:'Contato', tagColor:'#E8A94C', texto:'Olá {{nome}}, tudo bem? 👋\n\nPassando para dar continuidade sobre o *{{curso}}*.\n\nEstou à disposição!' },
+  { id:3, nome:'Proposta de fechamento', tag:'Negociando', tagColor:'#C9A84C', texto:'{{nome}}, temos uma condição especial para você! 🎯\n\nO *{{curso}}* está com turma abrindo em breve. Podemos garantir sua vaga agora?\n\nPodemos fechar hoje?' },
+  { id:4, nome:'Reativação', tag:'Perdido', tagColor:'#E05555', texto:'Olá {{nome}}! Temos novidades no *{{curso}}* que podem te interessar.\n\nTem 5 minutinhos?' },
+  { id:5, nome:'Pós-matrícula', tag:'Convertido', tagColor:'#4CAF7A', texto:'Parabéns, {{nome}}! 🎉\n\nSua matrícula no *{{curso}}* foi confirmada! Em breve você receberá as informações de acesso.' },
+];
+let _templates = JSON.parse(localStorage.getItem('medleads_templates') || 'null') || DEFAULT_TEMPLATES;
+let _templateLeadId = null;
+function saveTemplates() { localStorage.setItem('medleads_templates', JSON.stringify(_templates)); }
+window.openTemplatesForLead = function() {
+  _templateLeadId = currentDrawerLeadId;
+  renderTemplatesList();
+  document.getElementById('templatesModal').classList.add('open');
+};
+window.closeTemplates = function() { document.getElementById('templatesModal').classList.remove('open'); };
+function renderTemplatesList() {
+  document.getElementById('templatesList').innerHTML = _templates.map(t =>
+    `<div class="template-item" onclick="useTemplate(${t.id})"><span class="template-tag" style="background:${t.tagColor}22;color:${t.tagColor}">${t.tag}</span><div class="template-name">${t.nome}</div><div class="template-preview">${t.texto.replace(/\n/g,' ').substring(0,80)}...</div></div>`
+  ).join('');
+}
+window.useTemplate = function(id) {
+  const t = _templates.find(x => x.id === id);
+  if (!t) return;
+  const l = _templateLeadId ? leads.find(x => x.id === _templateLeadId) : null;
+  let msg = t.texto;
+  if (l) {
+    const primeiro = l.nome.replace(/^Dr[a]?\.?\s*/i,'').split(' ')[0];
+    msg = msg.replace(/{{nome}}/g, primeiro).replace(/{{curso}}/g, l.curso||'nossos cursos');
+  }
+  closeTemplates();
+  if (l && l.whats) {
+    const num = l.whats.replace(/\D/g,'');
+    window.open('https://wa.me/' + (num.startsWith('55')?num:'55'+num) + '?text=' + encodeURIComponent(msg), '_blank');
+  } else {
+    navigator.clipboard.writeText(msg).then(() => showToast('Template copiado!', 'success'));
+  }
+};
+window.novoTemplate = function() {
+  const nome = prompt('Nome do template:'); if (!nome) return;
+  const texto = prompt('Texto (use {{nome}} e {{curso}}):'); if (!texto) return;
+  _templates.push({ id: Date.now(), nome, tag: 'Geral', tagColor: '#C9A84C', texto });
+  saveTemplates(); renderTemplatesList(); showToast('Template criado!', 'success');
+};
 </script>
 </body>
 </html>

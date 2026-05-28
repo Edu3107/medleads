@@ -1332,7 +1332,7 @@ tbody tr:hover { background: var(--bg3); }
   .main-content { margin-left: 0; }
   .metrics-grid { grid-template-columns: 1fr 1fr; }
   .dashboard-grid { grid-template-columns: 1fr; }
-  #relKpis { grid-template-columns: 1fr 1fr!important; }
+  #relKpis { grid-template-columns: repeat(2,1fr)!important; }
   .topbar { padding: 0 16px; }
   .topbar-title { font-size: 17px; }
   .page-content { padding: 16px; }
@@ -2847,41 +2847,39 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
     <!-- RELATÓRIOS -->
     <section class="page-content" id="page-relatorios">
 
-      <!-- LINHA 1: KPIs + Donut -->
-      <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;margin-bottom:20px">
+      <!-- LINHA 1: KPIs -->
+      <div id="relKpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px"></div>
 
-        <!-- KPIs -->
+      <!-- LINHA 2: Donut + Especialidades (card unificado) + Origens -->
+      <div style="display:grid;grid-template-columns:320px 1fr;gap:16px;margin-bottom:16px">
+
+        <!-- Status + Especialidades unificados -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Status & Especialidades</span></div>
+          <div class="card-body">
+            <div style="display:flex;justify-content:center;margin-bottom:16px">
+              <svg width="130" height="130" viewBox="0 0 130 130" id="donutChart">
+                <circle cx="65" cy="65" r="50" fill="none" stroke="var(--bg3)" stroke-width="14"/>
+              </svg>
+            </div>
+            <div id="donutLegend" style="margin-bottom:16px"></div>
+            <div style="border-top:1px solid var(--border2);padding-top:14px">
+              <div style="font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px">Especialidades</div>
+              <div id="specialtyProgress"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cursos + Origens -->
         <div style="display:flex;flex-direction:column;gap:16px">
-          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px" id="relKpis"></div>
           <div class="card" style="flex:1">
             <div class="card-header"><span class="card-title">Cursos Mais Procurados</span></div>
             <div class="card-body" id="cursosProgress"></div>
           </div>
-        </div>
-
-        <!-- Donut Status -->
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">Status dos Leads</span>
+          <div class="card" style="flex:1">
+            <div class="card-header"><span class="card-title">Origem dos Leads</span></div>
+            <div class="card-body" id="origemProgress"></div>
           </div>
-          <div class="card-body" style="display:flex;flex-direction:column;align-items:center">
-            <svg width="140" height="140" viewBox="0 0 140 140" id="donutChart" style="margin-bottom:16px">
-              <circle cx="70" cy="70" r="52" fill="none" stroke="var(--bg3)" stroke-width="16"/>
-            </svg>
-            <div id="donutLegend" style="width:100%"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- LINHA 2: Especialidades + Origens -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
-        <div class="card">
-          <div class="card-header"><span class="card-title">Especialidades</span></div>
-          <div class="card-body" id="specialtyProgress"></div>
-        </div>
-        <div class="card">
-          <div class="card-header"><span class="card-title">Origem dos Leads</span></div>
-          <div class="card-body" id="origemProgress"></div>
         </div>
       </div>
 
@@ -3882,110 +3880,114 @@ function renderKanban() {
 function renderRelatorios() {
   const SC = { Novo:'#5B8DEF', Contato:'#E8A94C', Negociando:'#C9A84C', Convertido:'#4CAF7A', Perdido:'#E05555' };
   const counts = {};
-  leads.forEach(l => { counts[l.status] = (counts[l.status]||0)+1; });
-  const total = leads.length || 1;
-  const conv  = counts['Convertido'] || 0;
-  const neg   = counts['Negociando'] || 0;
+  leads.forEach(l => { counts[l.status]=(counts[l.status]||0)+1; });
+  const total   = leads.length || 1;
+  const conv    = counts['Convertido']||0;
+  const neg     = counts['Negociando']||0;
   const receita = leads.filter(l=>l.status==='Convertido').reduce((s,l)=>s+(l.valor||0),0);
-  const ticket  = conv > 0 ? Math.round(receita/conv) : 0;
+  const ticket  = conv>0 ? Math.round(receita/conv) : 0;
   const txConv  = (conv/total*100).toFixed(1);
   const scoreM  = Math.round(leads.reduce((s,l)=>s+(l.score||0),0)/total);
+  const cols    = ['#C9A84C','#5B8DEF','#4CAF7A','#E8A94C','#9B59B6','#E05555','#5DADE2','#F39C12'];
 
-  // KPIs
+  // ── KPIs ──
   const kpisEl = document.getElementById('relKpis');
   if (kpisEl) kpisEl.innerHTML = [
-    { lbl:'Total de Leads',     val:total,                            color:'var(--text)',       icon:'👥' },
-    { lbl:'Convertidos',        val:conv,                             color:'var(--success)',    icon:'✅' },
-    { lbl:'Receita Total',      val:'R$ '+receita.toLocaleString('pt-BR'), color:'var(--gold-light)', icon:'💰' },
-    { lbl:'Taxa de Conversão',  val:txConv+'%',                       color:'var(--success)',    icon:'📈' },
-  ].map(k => `
-    <div class="card" style="padding:18px">
-      <div style="font-size:20px;margin-bottom:8px">${k.icon}</div>
-      <div style="font-family:var(--font-mono);font-size:22px;font-weight:500;color:${k.color}">${k.val}</div>
-      <div style="font-size:11px;color:var(--text3);margin-top:4px;text-transform:uppercase;letter-spacing:.08em">${k.lbl}</div>
+    { lbl:'Total de Leads',    val:total,                                icon:'👥', color:'var(--text)' },
+    { lbl:'Convertidos',       val:conv,                                 icon:'✅', color:'var(--success)' },
+    { lbl:'Receita Total',     val:'R$ '+receita.toLocaleString('pt-BR'),icon:'💰', color:'var(--gold-light)' },
+    { lbl:'Taxa de Conversão', val:txConv+'%',                           icon:'📈', color:'var(--success)' },
+    { lbl:'Em Negociação',     val:neg,                                  icon:'💼', color:'var(--gold-light)' },
+    { lbl:'Ticket Médio',      val:'R$ '+ticket.toLocaleString('pt-BR'), icon:'🎯', color:'var(--text)' },
+    { lbl:'Score Médio',       val:scoreM+'/100',                        icon:'⭐', color:'var(--text)' },
+    { lbl:'Leads Perdidos',    val:counts['Perdido']||0,                 icon:'❌', color:'var(--danger)' },
+  ].map(k=>`
+    <div class="card" style="padding:16px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <span style="font-size:18px">${k.icon}</span>
+        <span style="font-family:var(--font-mono);font-size:20px;font-weight:600;color:${k.color}">${k.val}</span>
+      </div>
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em">${k.lbl}</div>
     </div>`).join('');
 
-  // Donut melhorado
+  // ── DONUT ──
   const svg = document.getElementById('donutChart');
-  const cx=70, cy=70, r=52, circ=2*Math.PI*r;
+  const cx=65,cy=65,r=50,circ=2*Math.PI*r;
   let off=0, segs='';
-  Object.entries(counts).forEach(([s,n]) => {
+  Object.entries(counts).forEach(([s,n])=>{
     const dash=n/total*circ;
-    segs+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${SC[s]||'#888'}" stroke-width="14"
-      stroke-dasharray="${dash} ${circ-dash}" stroke-dashoffset="${-off}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    segs+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${SC[s]||'#888'}"
+      stroke-width="12" stroke-dasharray="${dash} ${circ-dash}"
+      stroke-dashoffset="${-off}" transform="rotate(-90 ${cx} ${cy})"/>`;
     off+=dash;
   });
   svg.innerHTML = segs +
-    `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="transparent" stroke-width="14"/>
-     <text x="${cx}" y="${cy-8}" text-anchor="middle" font-family="var(--font-mono)" font-size="16" font-weight="600" fill="var(--gold-light)">${txConv}%</text>
-     <text x="${cx}" y="${cy+8}" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="var(--text3)">conversão</text>`;
+    `<text x="${cx}" y="${cy-6}" text-anchor="middle" font-family="var(--font-mono)" font-size="15" font-weight="700" fill="var(--gold-light)">${txConv}%</text>
+     <text x="${cx}" y="${cy+9}" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="8" fill="var(--text3)">conversão</text>`;
 
-  // Legenda donut com mini barras
+  // ── LEGENDA DONUT ──
   document.getElementById('donutLegend').innerHTML = Object.entries(counts)
-    .sort((a,b)=>b[1]-a[1]).map(([s,n]) => `
-    <div style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <div style="display:flex;align-items:center;gap:7px">
-          <div style="width:8px;height:8px;border-radius:50%;background:${SC[s]};flex-shrink:0"></div>
-          <span style="font-size:13px;color:var(--text)">${s}</span>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <span style="font-size:13px;font-weight:600;color:${SC[s]};font-family:var(--font-mono)">${n}</span>
-          <span style="font-size:10px;color:var(--text3);width:28px;text-align:right">${Math.round(n/total*100)}%</span>
-        </div>
+    .sort((a,b)=>b[1]-a[1]).map(([s,n])=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border2)">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${SC[s]};flex-shrink:0"></div>
+        <span style="font-size:12px;color:var(--text)">${s}</span>
       </div>
-      <div style="height:3px;background:var(--bg3);border-radius:2px">
-        <div style="height:100%;width:${Math.round(n/total*100)}%;background:${SC[s]};border-radius:2px;transition:width 1s ease"></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:60px;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden">
+          <div style="height:100%;width:${Math.round(n/total*100)}%;background:${SC[s]};border-radius:2px"></div>
+        </div>
+        <span style="font-family:var(--font-mono);font-size:12px;font-weight:600;color:${SC[s]};width:16px;text-align:right">${n}</span>
+        <span style="font-size:10px;color:var(--text3);width:28px;text-align:right">${Math.round(n/total*100)}%</span>
       </div>
     </div>`).join('');
 
-  // Cursos com ranking
-  const CC = {};
-  leads.forEach(l=>{if(l.curso)CC[l.curso]=(CC[l.curso]||0)+1;});
-  const CS = Object.entries(CC).sort((a,b)=>b[1]-a[1]);
-  const maxC = CS[0]?.[1]||1;
-  const cols = ['#C9A84C','#5B8DEF','#4CAF7A','#E8A94C','#9B59B6','#E05555','#5DADE2','#F39C12'];
-  document.getElementById('cursosProgress').innerHTML = CS.map(([c,n],i) => `
-    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border2)">
-      <div style="width:24px;height:24px;border-radius:6px;background:${cols[i%cols.length]}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <span style="font-size:11px;font-weight:700;color:${cols[i%cols.length]}">${i+1}</span>
+  // ── ESPECIALIDADES (compacto, pills) ──
+  const specCnt={};
+  leads.forEach(l=>{if(l.spec)specCnt[l.spec]=(specCnt[l.spec]||0)+1;});
+  document.getElementById('specialtyProgress').innerHTML =
+    '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
+    Object.entries(specCnt).sort((a,b)=>b[1]-a[1]).map(([s,n],i)=>`
+      <div style="background:${cols[i%cols.length]}18;border:1px solid ${cols[i%cols.length]}40;border-radius:20px;padding:5px 12px;display:flex;align-items:center;gap:6px">
+        <span style="font-size:12px;color:var(--text)">${s}</span>
+        <span style="font-size:11px;font-weight:700;color:${cols[i%cols.length]};font-family:var(--font-mono)">${n}</span>
+      </div>`).join('') + '</div>';
+
+  // ── CURSOS ──
+  const ccCnt={};
+  leads.forEach(l=>{if(l.curso)ccCnt[l.curso]=(ccCnt[l.curso]||0)+1;});
+  const CS=Object.entries(ccCnt).sort((a,b)=>b[1]-a[1]);
+  const maxC=CS[0]?.[1]||1;
+  document.getElementById('cursosProgress').innerHTML = CS.map(([c,n],i)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border2)">
+      <div style="width:22px;height:22px;border-radius:6px;background:${cols[i%cols.length]}18;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <span style="font-size:10px;font-weight:700;color:${cols[i%cols.length]}">${i+1}</span>
       </div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px">${c}</div>
+        <div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px">${c}</div>
         <div style="height:3px;background:var(--bg3);border-radius:2px">
-          <div style="height:100%;width:${Math.round(n/maxC*100)}%;background:${cols[i%cols.length]};border-radius:2px;transition:width 1s ease"></div>
+          <div style="height:100%;width:${Math.round(n/maxC*100)}%;background:${cols[i%cols.length]};border-radius:2px"></div>
         </div>
       </div>
       <span style="font-family:var(--font-mono);font-size:13px;font-weight:600;color:${cols[i%cols.length]};flex-shrink:0">${n}</span>
     </div>`).join('');
 
-  // Especialidades em pills
-  const SC2 = {};
-  leads.forEach(l=>{if(l.spec)SC2[l.spec]=(SC2[l.spec]||0)+1;});
-  document.getElementById('specialtyProgress').innerHTML =
-    '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
-    Object.entries(SC2).sort((a,b)=>b[1]-a[1]).map(([s,n],i)=>`
-      <div style="background:${cols[i%cols.length]}15;border:1px solid ${cols[i%cols.length]}40;border-radius:20px;padding:7px 14px;display:flex;align-items:center;gap:8px">
-        <span style="font-size:12px;color:var(--text)">${s}</span>
-        <span style="font-size:12px;font-weight:700;color:${cols[i%cols.length]};font-family:var(--font-mono)">${n}</span>
-      </div>`).join('') + '</div>';
-
-  // Origens com ícones
-  const OC = {};
-  leads.forEach(l=>{if(l.origem)OC[l.origem]=(OC[l.origem]||0)+1;});
-  const OS = Object.entries(OC).sort((a,b)=>b[1]-a[1]);
-  const maxO = OS[0]?.[1]||1;
-  const icons = {'Instagram':'📸','Google Ads':'🔍','Facebook':'📘','Indicação':'🤝','Site ISA':'🌐','WhatsApp direto':'💬','E-mail marketing':'📧','Formulário Web':'📋'};
-  document.getElementById('origemProgress').innerHTML = OS.map(([o,n]) => `
-    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border2)">
+  // ── ORIGENS ──
+  const ocCnt={};
+  leads.forEach(l=>{if(l.origem)ocCnt[l.origem]=(ocCnt[l.origem]||0)+1;});
+  const OS=Object.entries(ocCnt).sort((a,b)=>b[1]-a[1]);
+  const maxO=OS[0]?.[1]||1;
+  const icons={'Instagram':'📸','Google Ads':'🔍','Facebook':'📘','Indicação':'🤝','Site ISA':'🌐','WhatsApp direto':'💬','E-mail marketing':'📧','Formulário Web':'📋'};
+  document.getElementById('origemProgress').innerHTML = OS.map(([o,n])=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border2)">
       <div style="width:28px;height:28px;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">${icons[o]||'📌'}</div>
       <div style="flex:1">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
           <span style="font-size:12px;color:var(--text)">${o}</span>
           <span style="font-size:11px;color:var(--text3)">${Math.round(n/total*100)}%</span>
         </div>
         <div style="height:4px;background:var(--bg3);border-radius:2px">
-          <div style="height:100%;width:${Math.round(n/maxO*100)}%;background:linear-gradient(90deg,var(--gold-dark),var(--gold-light));border-radius:2px;transition:width 1s ease"></div>
+          <div style="height:100%;width:${Math.round(n/maxO*100)}%;background:linear-gradient(90deg,var(--gold-dark),var(--gold-light));border-radius:2px"></div>
         </div>
       </div>
       <span style="font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--gold-light);flex-shrink:0">${n}</span>

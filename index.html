@@ -4616,21 +4616,12 @@ window.sendIA = async function() {
 
   const systemMsg = 'Você é um assistente de vendas especializado em cursos médicos da ISA Digital (Instituto Saber e Aprender), focada em ecocardiografia. Ajuda a equipe a converter leads de médicos em matrículas. Cursos: Ecocardiografia Básico/Avançado/Fetal/3D, Doppler Tecidual, Eco Estresse Elite, EcoVision Training, Bastidores da Prova de Título, Mentoria com Dra. Ana Camarozano. '+statsCtx+' '+leadCtx+' Responda em português, seja direto e prático. Máx 250 palavras.';
 
-  const contents = [
-    {role:'user',   parts:[{text: systemMsg}]},
-    {role:'model',  parts:[{text: 'Entendido! Pronto para ajudar com as vendas da ISA Digital.'}]}
-  ];
-
-  _iaHistory.slice(-8).forEach(m => {
-    contents.push({
-      role:  m.role === 'user' ? 'user' : 'model',
-      parts: [{text: m.content}]
-    });
-  });
-  contents.push({role:'user', parts:[{text: q}]});
+  // Gemini Pro: incluir contexto na primeira mensagem do user
+  const primeiraMsg = systemMsg + '\n\nPergunta do usuário: ' + q;
+  const contents = [{role:'user', parts:[{text: primeiraMsg}]}];
 
   try {
-    const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=AIzaSyAQ.Ab8RN6LxtzeJvry4Xh6BRe1Tx2dHHDqjC57oVM2j_kOKUQaMPg', {
+    const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyAQ.Ab8RN6LxtzeJvry4Xh6BRe1Tx2dHHDqjC57oVM2j_kOKUQaMPg', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({

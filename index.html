@@ -5742,6 +5742,78 @@ function renderReports() {
 }
 
 
+
+// ═══════════════════════════════════════════════
+//  DATA E HORA
+// ═══════════════════════════════════════════════
+function dataHora() {
+  const now = new Date();
+  const d = now.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'});
+  const h = now.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+  return d + ' às ' + h;
+}
+
+// ═══════════════════════════════════════════════
+//  SCORE AUTOMÁTICO
+// ═══════════════════════════════════════════════
+function calcScore(lead) {
+  let score = 0;
+  const specScore = {
+    'Cardiologista':25,'Intensivista':20,'Emergencista':18,
+    'Pediatra':15,'Clínico Geral':12,'Médico Residente':10
+  };
+  score += specScore[lead.spec] || 8;
+
+  const cursoScore = {
+    'EcoVision Training – Imersão Presencial':25,
+    'Mentoria com a Dra. Ana Camarozano':25,
+    'Curso Preparatório para a Prova de Título de Ecocardiografia 2026':22,
+    'Eco Estresse Elite':20,
+    'Ecocardiografia nas Valvopatias de Ponta a Ponta':18,
+    'Bastidores da Prova de Título':15,
+    'Assinatura Ecoinsights':12,
+    'Ecocardiograma Avançado':20,'Ecocardiograma 3D':18,
+    'Ecocardiograma Fetal':16,'Doppler Tecidual':14,'Ecocardiograma Básico':10,
+  };
+  score += cursoScore[lead.curso] || 8;
+
+  const origemScore = {
+    'Indicação':20,'Site ISA':18,'Formulário Web':16,
+    'WhatsApp direto':15,'Instagram':12,'Google Ads':10,
+    'E-mail marketing':8,'Facebook':6,
+  };
+  score += origemScore[lead.origem] || 5;
+
+  if (lead.nome)   score += 3;
+  if (lead.email)  score += 3;
+  if (lead.whats)  score += 3;
+  if (lead.crm)    score += 3;
+  if (lead.cidade) score += 3;
+
+  const statusScore = {
+    'Convertido':15,'Negociando':12,'Contato':8,'Novo':4,'Perdido':0
+  };
+  score += statusScore[lead.status] || 0;
+
+  return Math.min(100, Math.round(score));
+}
+
+window.recalcAllScores = function() {
+  let changed = 0;
+  leads.forEach(l => {
+    const novoScore = calcScore(l);
+    if (l.score !== novoScore) { l.score = novoScore; changed++; }
+  });
+  if (changed > 0) {
+    saveLeads();
+    renderLeadsTable();
+    renderDashboard();
+    showToast('Scores atualizados para ' + changed + ' leads!', 'success');
+  } else {
+    showToast('Todos os scores já estão atualizados!', 'success');
+  }
+};
+
 // ═══════════════════════════════════════════════
 //  MULTI-USUÁRIO
 // ═══════════════════════════════════════════════

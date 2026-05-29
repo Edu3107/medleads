@@ -2678,7 +2678,8 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
         <div class="user-avatar" id="userAvatar">U</div>
         <div class="user-info">
           <div class="user-name" id="userName">Usuário</div>
-          <div class="user-role">Comercial ISA</div>
+          <div class="user-role" id="sidebarUserRole">Comercial ISA</div>
+          <div id="adminBadge" style="font-size:10px;color:var(--gold-light);margin-top:2px;display:none">👑 Admin</div>
         </div>
         <button class="btn-logout" onclick="handleLogout()" title="Sair">⏻</button>
       </div>
@@ -4702,61 +4703,19 @@ window.sendIA = async function() {
   document.getElementById('iaSuggestions').style.display = 'none';
 
   addIAMsg('user', q);
-  const loadDiv = addIAMsg('loading', '⏳ Consultando IA...');
+  const loadDiv = addIAMsg('loading', '⏳ Analisando...');
 
   const leadAtual = _iaLeadId ? leads.find(l => l.id === _iaLeadId) : null;
-  const total = leads.length;
-  const nConv = leads.filter(l=>l.status==='Convertido').length;
-  const nNeg  = leads.filter(l=>l.status==='Negociando').length;
-  const rec   = leads.filter(l=>l.status==='Convertido').reduce((s,l)=>s+(l.valor||0),0);
 
-  const statsCtx = 'Pipeline: '+total+' leads, '+nConv+' convertidos, '+nNeg+' negociando. Receita: R$ '+rec.toLocaleString('pt-BR')+'.';
-  const leadCtx  = leadAtual
-    ? 'Lead: '+leadAtual.nome+' | '+( leadAtual.spec||'—')+' | Curso: '+(leadAtual.curso||'—')+' | Status: '+leadAtual.status+' | Score: '+leadAtual.score+'/100.'
-    : '';
-
-  const systemMsg = 'Você é um assistente especializado em vendas de cursos médicos da ISA Digital, focada em ecocardiografia. Cursos: Ecocardiografia Básico/Avançado/Fetal/3D, Doppler Tecidual, Eco Estresse Elite, EcoVision Training, Bastidores da Prova de Título, Mentoria com Dra. Ana Camarozano. '+statsCtx+' '+leadCtx+' Responda em português brasileiro de forma criativa, direta e persuasiva. Seja como um consultor de vendas experiente. Máx 200 palavras.';
-
-  // Histórico de mensagens
-  const messages = [];
-  _iaHistory.slice(-6).forEach(m => {
-    messages.push({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content });
-  });
-  messages.push({ role: 'user', content: q });
-
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1000,
-        system: systemMsg,
-        messages: messages
-      })
-    });
-
-    const data = await resp.json();
-
-    if (!resp.ok) throw new Error(data.error?.message || 'Erro '+resp.status);
-
-    const text = data.content?.[0]?.text || 'Sem resposta.';
+  setTimeout(() => {
     loadDiv.remove();
-    addIAMsg('ai', text);
+    const resposta = gerarRespostaLocal(q, leadAtual);
+    addIAMsg('ai', resposta);
     _iaHistory.push({role:'user', content:q});
-    _iaHistory.push({role:'assistant', content:text});
+    _iaHistory.push({role:'assistant', content:resposta});
     if (_iaHistory.length > 12) _iaHistory = _iaHistory.slice(-12);
-
-  } catch(e) {
-    loadDiv.remove();
-    console.warn('IA erro:', e.message);
-    const local = gerarRespostaLocal(q, leadAtual);
-    addIAMsg('ai', local);
-    _iaHistory.push({role:'user', content:q});
-    _iaHistory.push({role:'assistant', content:local});
-  }
-
-  document.getElementById('iaSendBtn').disabled = false;
+    document.getElementById('iaSendBtn').disabled = false;
+  }, 600);
 };
 
 // ═══════════════════════════════════════════════
@@ -6022,6 +5981,12 @@ function updateUIForRole() {
   adminEls.forEach(el => {
     el.style.display = _isAdmin ? '' : 'none';
   });
+  // Badge admin na sidebar
+  const badge = document.getElementById('adminBadge');
+  if (badge) {
+    badge.style.display = _isAdmin ? 'block' : 'none';
+    badge.textContent = _isAdmin ? '👑 Admin' : '';
+  }
   // Botão atribuir no drawer
   const btnAtribuir = document.getElementById('btnAtribuirWrap');
   if (btnAtribuir) btnAtribuir.style.display = _isAdmin ? 'flex' : 'none';
@@ -6170,6 +6135,49 @@ function renderEquipe() {
       </div>`;
   }).join('');
 }
+
+
+// ═══════════════════════════════════════════════
+//  PERFIL
+// ═══════════════════════════════════════════════
+function renderPerfil() {
+  const user = _auth && _auth.currentUser;
+  const nameEl = document.getElementById('profileName');
+  const emailEl = document.getElementById('profileEmail');
+  const avatarEl = document.getElementById('profileAvatar');
+  if (nameEl && user) nameEl.value = user.displayName || '';
+  if (emailEl && user) emailEl.textContent = user.email || '';
+  if (avatarEl && user) avatarEl.textContent = (user.displayName || user.email || 'U')[0].toUpperCase();
+  // Atualizar link do formulário
+  const formLink = document.getElementById('formLink');
+  if (formLink) formLink.value = 'https://medleads-gamma.vercel.app/form.html';
+}
+
+// ═══════════════════════════════════════════════
+//  PWA
+// ═══════════════════════════════════════════════
+function registerPWA() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+}
+
+window.pedirPermissaoNotificacao = async function() {
+  if (!('Notification' in window)) {
+    showToast('Seu navegador não suporta notificações.', 'error');
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    showToast('Notificações já estão ativas! ✅', 'success');
+    return;
+  }
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    showToast('Notificações ativadas! 🔔', 'success');
+  } else {
+    showToast('Permissão negada. Ative nas configurações do navegador.', 'error');
+  }
+};
 
 // ═══════════════════════════════════════════════
 //  TOAST NOTIFICATIONS

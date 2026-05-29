@@ -2621,6 +2621,7 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
 </div>
 
 <!-- ══════════════ APP ══════════════ -->
+<div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar(false)"></div>
 <div id="app">
 
   <!-- SIDEBAR -->
@@ -2659,7 +2660,8 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
       <button class="nav-item" onclick="window.open('https://medleads-gamma.vercel.app/form.html','_blank')">
         <span class="nav-icon">🔗</span> Formulário Público
       </button>
-      <button class="nav-item" onclick="navigate('followup')">
+      <button class="nav-item" onclick="navigate('followup')" style="position:relative">
+            <span id="followupBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;align-items:center;justify-content:center">0</span>
         <span class="nav-icon">🔔</span> Follow-up
         <span id="badgeFollowup" style="display:none;background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span>
       </button>
@@ -3020,7 +3022,7 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
             <span class="card-title">Leads que precisam de atenção</span>
             <span style="font-size:12px;color:var(--text3)" id="followupCount"></span>
           </div>
-          <div class="card-body" id="followupList"></div>
+          <div class="card-body" id="followupList"><div id="followupEmpty" style="display:none;text-align:center;color:var(--text3);padding:40px;font-size:14px">✅ Nenhum lead pendente!</div></div>
         </div>
         <div class="card">
           <div class="card-header">
@@ -3408,7 +3410,13 @@ function _showApp(user) {
 }
 
 function _showDemo() {
-  _showApp({ displayName: 'Demo ISA', email: 'demo@isadigital.com.br', uid: null });
+  // Não entrar em modo demo - mostrar mensagem de erro no login
+  _showLogin();
+  const errEl = document.getElementById('loginError');
+  if (errEl) {
+    errEl.textContent = 'Erro ao conectar com o servidor. Verifique sua conexão.';
+    errEl.style.display = 'block';
+  }
 }
 
 function _initFirebase() {
@@ -6179,6 +6187,64 @@ window.pedirPermissaoNotificacao = async function() {
   }
 };
 
+
+// ═══════════════════════════════════════════════
+//  PERFIL — FUNÇÕES
+// ═══════════════════════════════════════════════
+window.salvarPerfil = function() {
+  const nome = document.getElementById('profileName')?.value?.trim();
+  if (!nome) { showToast('Digite um nome!', 'error'); return; }
+  const user = _auth && _auth.currentUser;
+  if (!user) return;
+  user.updateProfile({ displayName: nome })
+    .then(() => {
+      document.getElementById('sidebarUserName').textContent = nome;
+      showToast('Perfil salvo!', 'success');
+    })
+    .catch(e => showToast('Erro: ' + e.message, 'error'));
+};
+
+window.alterarSenha = function() {
+  const nova  = document.getElementById('newPassword')?.value;
+  const conf  = document.getElementById('confirmPassword')?.value;
+  if (!nova || nova.length < 6) { showToast('Senha deve ter ao menos 6 caracteres!', 'error'); return; }
+  if (nova !== conf) { showToast('Senhas não coincidem!', 'error'); return; }
+  const user = _auth && _auth.currentUser;
+  if (!user) return;
+  user.updatePassword(nova)
+    .then(() => showToast('Senha alterada com sucesso!', 'success'))
+    .catch(e => showToast('Erro: ' + e.message, 'error'));
+};
+
+window.downloadTemplate = function() {
+  const csv = 'nome,email,whats,crm,spec,cidade,curso,status,origem,valor,obs\nDr. João Silva,joao@email.com,(11)99999-9999,CRM/SP 123456,Cardiologista,São Paulo SP,Ecocardiograma Básico,Novo,Instagram,1990,Lead exemplo';
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'MedLeads_modelo.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Modelo CSV baixado!', 'success');
+};
+
+window.instalarApp = function() {
+  if (window._deferredPrompt) {
+    window._deferredPrompt.prompt();
+    window._deferredPrompt.userChoice.then(() => {
+      window._deferredPrompt = null;
+    });
+  } else {
+    showToast('Para instalar: Menu do navegador → "Instalar app"', 'success');
+  }
+};
+
+// Capturar evento de instalação PWA
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  window._deferredPrompt = e;
+  const btn = document.getElementById('btnInstalarApp');
+  if (btn) btn.style.display = 'flex';
+});
+
 // ═══════════════════════════════════════════════
 //  TOAST NOTIFICATIONS
 // ═══════════════════════════════════════════════
@@ -6481,5 +6547,6 @@ function renderReceitaMensal() {
   </div>
 </div>
 
+<div id="toast" class="toast"></div>
 </body>
 </html>

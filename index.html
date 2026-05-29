@@ -3097,8 +3097,27 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
             <span class="card-title">👥 Gerenciar Equipe</span>
             <button class="btn-action" style="font-size:11px;padding:5px 12px" onclick="adicionarVendedor()">+ Adicionar</button>
           </div>
-          <div class="card-body" id="equipeList">
-            <div style="text-align:center;color:var(--text3);padding:20px;font-size:13px">Nenhum vendedor cadastrado ainda.</div>
+          <div class="card-body">
+            <!-- Formulário inline para adicionar vendedor -->
+            <div id="formVendedor" style="display:none;background:var(--bg3);border-radius:10px;padding:16px;margin-bottom:16px">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+                <div>
+                  <label style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:5px">Nome</label>
+                  <input id="vendedorNome" type="text" placeholder="Nome do vendedor" style="width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none">
+                </div>
+                <div>
+                  <label style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:5px">E-mail</label>
+                  <input id="vendedorEmail" type="email" placeholder="email@exemplo.com" style="width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none">
+                </div>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn-action" style="flex:1;font-size:12px;padding:8px" onclick="confirmarAdicionarVendedor()">✓ Salvar</button>
+                <button class="btn-outline" style="flex:1;font-size:12px;padding:8px;justify-content:center" onclick="document.getElementById('formVendedor').style.display='none'">Cancelar</button>
+              </div>
+            </div>
+            <div id="equipeList">
+              <div style="text-align:center;color:var(--text3);padding:20px;font-size:13px">Nenhum vendedor cadastrado ainda.</div>
+            </div>
           </div>
         </div>
 
@@ -6074,9 +6093,22 @@ window.closeAtribuirModal = function() {
 
 // Gerenciar equipe
 window.adicionarVendedor = function() {
-  const nome  = prompt('Nome do vendedor:');
-  if (!nome) return;
-  const email = prompt('E-mail do vendedor:');
+  const form = document.getElementById('formVendedor');
+  if (form) {
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    if (form.style.display === 'block') {
+      document.getElementById('vendedorNome').value = '';
+      document.getElementById('vendedorEmail').value = '';
+      setTimeout(() => document.getElementById('vendedorNome').focus(), 100);
+    }
+  }
+};
+
+window.confirmarAdicionarVendedor = function() {
+  const nome  = document.getElementById('vendedorNome').value.trim();
+  const email = document.getElementById('vendedorEmail').value.trim();
+
+  if (!nome) { showToast('Digite o nome do vendedor!', 'error'); return; }
   if (!email || !email.includes('@')) { showToast('E-mail inválido!', 'error'); return; }
 
   if (_vendedores.find(v => v.email === email)) {
@@ -6087,6 +6119,7 @@ window.adicionarVendedor = function() {
   _vendedores.push({ nome, email, criadoEm: new Date().toISOString() });
   saveVendedores();
   renderEquipe();
+  document.getElementById('formVendedor').style.display = 'none';
   showToast('Vendedor ' + nome + ' adicionado!', 'success');
 };
 

@@ -2486,7 +2486,7 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
 <div id="loginScreen">
   <!-- Efeitos de fundo -->
   <canvas id="loginCanvas"></canvas>
-  <div class="login-watermark"><span class="login-watermark-text">LM</span></div>
+  <div class="login-watermark"><span class="login-watermark-text">ML</span></div>
   <div class="login-glow-left"></div>
   <div class="login-glow-right"></div>
   <div class="login-grid"></div>
@@ -3476,7 +3476,7 @@ window.addEventListener('load', _initFirebase);
   resize();
   window.addEventListener('resize', resize);
 
-  const particles = Array.from({ length: 70 }, () => ({
+  const particles = Array.from({ length: 180 }, () => ({
     x: Math.random() * canvas.width,
     y: Math.random() * canvas.height,
     r: Math.random() * 1.8 + 0.3,

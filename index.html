@@ -3668,7 +3668,17 @@ window.navigate = function(page) {
   if (page === 'cursos')    renderCursos();
   if (page === 'dashboard') renderDashboard();
   if (page === 'followup')  renderFollowup();
-  if (page === 'perfil')    { renderPerfil(); setTimeout(renderMetasCurso, 100); setTimeout(renderEquipe, 100); setTimeout(updateUIForRole, 150); }
+  if (page === 'perfil') {
+    renderPerfil();
+    setTimeout(renderMetasCurso, 100);
+    setTimeout(renderEquipe, 100);
+    setTimeout(() => {
+      updateUIForRole();
+      // Forçar exibição do cardEquipe para admin
+      const cardEquipe = document.getElementById('cardEquipe');
+      if (cardEquipe) cardEquipe.style.display = _isAdmin ? 'block' : 'none';
+    }, 200);
+  }
 
   if (window.innerWidth <= 900) toggleSidebar(false);
 };

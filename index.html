@@ -4182,6 +4182,9 @@ window.openDrawer = function(id) {
   const l = leads.find(x => x.id === id);
   if (!l) return;
   currentDrawerLeadId = id;
+  // Mostrar/ocultar botão atribuir baseado no role
+  const btnAtribuir = document.getElementById('btnAtribuirWrap');
+  if (btnAtribuir) btnAtribuir.style.display = _isAdmin ? 'flex' : 'none';
 
   document.getElementById('drawerAvatar').textContent = l.nome.charAt(0);
   document.getElementById('drawerName').textContent   = l.nome;
@@ -5813,6 +5816,116 @@ window.recalcAllScores = function() {
     showToast('Todos os scores já estão atualizados!', 'success');
   }
 };
+
+
+// ═══════════════════════════════════════════════
+//  FOLLOW-UP COM DATA
+// ═══════════════════════════════════════════════
+window.agendarFollowup = function(leadId) {
+  const dias = prompt('Agendar follow-up em quantos dias?', '3');
+  if (!dias || isNaN(parseInt(dias))) return;
+  const n = parseInt(dias);
+  const data = new Date();
+  data.setDate(data.getDate() + n);
+  const dataStr = data.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric'});
+  const idx = leads.findIndex(l => l.id === leadId);
+  if (idx < 0) return;
+  leads[idx].followupData = data.toISOString();
+  leads[idx].followupLabel = dataStr;
+  if (!leads[idx].hist) leads[idx].hist = [];
+  leads[idx].hist.unshift({ emoji:'📅', acao:'Follow-up agendado para ' + dataStr, quando: dataHora() });
+  saveLeads();
+  showToast('Follow-up agendado para ' + dataStr + '!', 'success');
+  openDrawer(leadId);
+};
+
+function checkFollowups() {
+  const agora = new Date();
+  const vencidos = leads.filter(l => {
+    if (!l.followupData) return false;
+    const data = new Date(l.followupData);
+    return data <= agora && l.status !== 'Convertido' && l.status !== 'Perdido';
+  });
+  if (vencidos.length > 0) {
+    showToast('📅 ' + vencidos.length + ' follow-up' + (vencidos.length>1?'s':'') + ' vencido' + (vencidos.length>1?'s':'') + '!', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  SYNC AUTOMÁTICO
+// ═══════════════════════════════════════════════
+function startAutoSync() {
+  setInterval(async () => {
+    const antes = leads.length;
+    await syncLeadsPendentes();
+    const depois = leads.length;
+    if (depois > antes) {
+      const novos = depois - antes;
+      showToast('🎉 ' + novos + ' novo(s) lead(s) chegou via formulário!', 'success');
+      if (Notification.permission === 'granted') {
+        new Notification('MedLeads — Novo lead! 🎉', {
+          body: novos + ' novo(s) lead(s) captado(s) via formulário!'
+        });
+      }
+    }
+  }, 3 * 60 * 1000);
+}
+
+// ═══════════════════════════════════════════════
+//  BOAS-VINDAS
+// ═══════════════════════════════════════════════
+function showWelcome(userName) {
+  const h = new Date().getHours();
+  const saudacao = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const primeiro = (userName||'').split(' ')[0] || 'usuário';
+  const pendentes = leads.filter(l => l.status === 'Novo' || l.status === 'Contato').length;
+  const negociando = leads.filter(l => l.status === 'Negociando').length;
+  let sub = '';
+  if (pendentes > 0) sub = pendentes + ' lead' + (pendentes>1?'s':'') + ' aguardando contato';
+  else if (negociando > 0) sub = negociando + ' em negociação';
+  else sub = 'Tudo em dia! Continue assim 💪';
+  const el = document.getElementById('welcomeToast');
+  if (!el) return;
+  document.getElementById('welcomeTitle').textContent = saudacao + ', ' + primeiro + '!';
+  document.getElementById('welcomeSub').textContent = sub;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+// ═══════════════════════════════════════════════
+//  GESTOS MOBILE
+// ═══════════════════════════════════════════════
+function addSwipeGestures(el, leadId) {
+  let startX = 0, isDragging = false;
+  el.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    isDragging = false;
+  }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    const dx = e.touches[0].clientX - startX;
+    if (Math.abs(dx) > 10) {
+      isDragging = true;
+      el.style.transform = 'translateX(' + Math.max(-80, Math.min(80, dx)) + 'px)';
+      el.style.transition = 'none';
+    }
+  }, { passive: true });
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    el.style.transition = 'transform .3s ease';
+    el.style.transform = 'translateX(0)';
+    if (!isDragging) return;
+    if (dx > 60) {
+      const l = leads.find(x => x.id === leadId);
+      if (l && l.whats) {
+        const num = l.whats.replace(/\D/g,'');
+        const numBR = num.startsWith('55') ? num : '55'+num;
+        window.open('https://wa.me/'+numBR, '_blank');
+      }
+    } else if (dx < -60) {
+      openDrawer(leadId);
+    }
+  });
+}
 
 // ═══════════════════════════════════════════════
 //  MULTI-USUÁRIO

@@ -3092,7 +3092,7 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
         </div>
 
         <!-- GERENCIAR EQUIPE (admin only) -->
-        <div class="card admin-only" style="margin-top:20px">
+        <div class="card" id="cardEquipe" style="margin-top:20px;display:none">
           <div class="card-header">
             <span class="card-title">👥 Gerenciar Equipe</span>
             <button class="btn-action" style="font-size:11px;padding:5px 12px" onclick="adicionarVendedor()">+ Adicionar</button>
@@ -3668,7 +3668,7 @@ window.navigate = function(page) {
   if (page === 'cursos')    renderCursos();
   if (page === 'dashboard') renderDashboard();
   if (page === 'followup')  renderFollowup();
-  if (page === 'perfil')    { renderPerfil(); setTimeout(renderMetasCurso, 100); setTimeout(renderEquipe, 100); }
+  if (page === 'perfil')    { renderPerfil(); setTimeout(renderMetasCurso, 100); setTimeout(renderEquipe, 100); setTimeout(updateUIForRole, 150); }
 
   if (window.innerWidth <= 900) toggleSidebar(false);
 };
@@ -5802,6 +5802,9 @@ function updateUIForRole() {
   // Botão atribuir no drawer
   const btnAtribuir = document.getElementById('btnAtribuirWrap');
   if (btnAtribuir) btnAtribuir.style.display = _isAdmin ? 'flex' : 'none';
+  // Card gerenciar equipe
+  const cardEquipe = document.getElementById('cardEquipe');
+  if (cardEquipe) cardEquipe.style.display = _isAdmin ? 'block' : 'none';
   // Atualizar sidebar
   const adminBadge = document.getElementById('adminBadge');
   if (adminBadge) {

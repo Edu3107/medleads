@@ -5970,26 +5970,34 @@ function isAdmin() {
 }
 
 function saveVendedores() {
-  localStorage.setItem('medleads_vendedores', JSON.stringify(_vendedores));
-  // Salvar no Firestore também
-  if (_uid && _db) {
-    _db.collection('users').doc('admin_data').set({
-      vendedores: _vendedores
-    }, { merge: true }).catch(e => console.warn('Erro ao salvar vendedores:', e));
+  try {
+    localStorage.setItem('medleads_vendedores', JSON.stringify(_vendedores));
+    // Salvar no Firestore em background (não bloqueia)
+    if (_uid && _db) {
+      _db.collection('config').doc(_uid).set({
+        vendedores: _vendedores
+      }, { merge: true }).catch(e => console.warn('Firestore vendedores:', e));
+    }
+  } catch(e) {
+    console.warn('saveVendedores erro:', e);
   }
 }
 
 async function loadVendedores() {
   try {
+    // Primeiro do localStorage (instantâneo)
+    const local = localStorage.getItem('medleads_vendedores');
+    if (local) _vendedores = JSON.parse(local);
+    // Depois do Firestore (em background)
     if (_uid && _db) {
-      const doc = await _db.collection('users').doc('admin_data').get();
+      const doc = await _db.collection('config').doc(_uid).get();
       if (doc.exists && doc.data().vendedores) {
         _vendedores = doc.data().vendedores;
         localStorage.setItem('medleads_vendedores', JSON.stringify(_vendedores));
       }
     }
   } catch(e) {
-    console.warn('Erro ao carregar vendedores:', e);
+    console.warn('loadVendedores:', e);
   }
 }
 

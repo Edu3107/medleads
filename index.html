@@ -87,11 +87,15 @@ body {
 /* Watermark */
 .login-watermark {
   position: absolute;
-  bottom: -3rem;
-  right: 41%;
+  bottom: 0;
+  left: 0;
+  width: 59%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
   pointer-events: none;
   z-index: 1;
-  transform: translateX(50%);
+  overflow: hidden;
 }
 .login-watermark-text {
   font-family: 'Cormorant Garamond', serif;
@@ -2705,7 +2709,13 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
           <div class="user-role" id="sidebarUserRole">Comercial ISA</div>
           <div id="adminBadge" style="font-size:10px;color:var(--gold-light);margin-top:2px;display:none">👑 Admin</div>
         </div>
-        <button class="btn-logout" onclick="handleLogout()" title="Sair">⏻</button>
+        <button class="btn-logout" onclick="handleLogout()" title="Sair" style="display:flex;align-items:center;justify-content:center;padding:6px;border-radius:6px">
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+    <polyline points="16 17 21 12 16 7"/>
+    <line x1="21" y1="12" x2="9" y2="12"/>
+  </svg>
+</button>
       </div>
     </div>
   </aside>

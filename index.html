@@ -3838,7 +3838,7 @@ window.filterLeads = function() {
 };
 
 function renderLeadsTable() {
-  filteredLeads = [...leads];
+  filteredLeads = [...getLeadsFiltrados()];
   const q  = document.getElementById('searchInput')?.value?.toLowerCase() || '';
   const st = document.getElementById('filterStatus')?.value || '';
   const cu = document.getElementById('filterCurso')?.value || '';
@@ -4159,7 +4159,7 @@ window.saveLead = function() {
     }
     showToast('Lead atualizado!', 'success');
   } else {
-    const novoLead = { id: nextId++, ...data, hist:[{ emoji:'👋', acao:'Lead cadastrado manualmente', quando: dataHora() }] };
+    const novoLead = { id: nextId++, ...data, assignedTo: null, assignedName: 'Admin', hist:[{ emoji:'👋', acao:'Lead cadastrado manualmente', quando: dataHora() }] };
     novoLead.score = calcScore(novoLead);
     leads.unshift(novoLead);
     showToast('🎉 Lead adicionado!', 'success');

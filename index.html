@@ -3259,6 +3259,7 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
       <div>
         <div class="drawer-name" id="drawerName">—</div>
         <div class="drawer-spec" id="drawerSpec">—</div>
+        <div id="drawerAssigned" style="display:none;margin-top:6px;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.3);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--gold-light);font-weight:600"></div>
       </div>
     </div>
     <button class="modal-close" onclick="closeDrawer()">×</button>
@@ -3871,7 +3872,7 @@ function renderLeadsTable() {
         <div class="lead-name-cell">
           <div class="lead-avatar">${l.nome.charAt(0)}</div>
           <div>
-            <div class="lead-name">${l.nome}</div>
+            <div class="lead-name">${l.nome}${l.assignedTo ? '<span style="font-size:9px;background:rgba(201,168,76,.15);color:var(--gold-light);border-radius:10px;padding:1px 6px;margin-left:6px;font-weight:600">👤 '+(l.assignedName||l.assignedTo.split('@')[0])+'</span>' : ''}</div>
             <div class="lead-specialty">${l.spec||'—'} · ${l.cidade||'—'}</div>
           </div>
         </div>

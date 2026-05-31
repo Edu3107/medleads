@@ -3103,10 +3103,13 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
                   </div>
 
                   <!-- Botão carregar CSV -->
-                  <label style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:linear-gradient(135deg,#b8862e,#c9a227,#e8c060);color:#000;font-weight:700;font-size:13px;border-radius:8px;cursor:pointer;letter-spacing:.04em" id="btnBuscarCNES">
+                  <input type="file" id="cnesFileInput" accept=".csv,.CSV" style="display:none" onchange="carregarCSVCNES(this)">
+                  <button id="btnBuscarCNES" type="button"
+                    onclick="document.getElementById('cnesFileInput').click()"
+                    style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:linear-gradient(135deg,#b8862e,#c9a227,#e8c060);color:#000;font-weight:700;font-size:13px;border-radius:8px;cursor:pointer;letter-spacing:.04em;border:none;transition:opacity .15s;active:opacity:.8"
+                    onmousedown="this.style.opacity='.75'" onmouseup="this.style.opacity='1'" onmouseleave="this.style.opacity='1'">
                     📂 Carregar CSV do CNES e Buscar
-                    <input type="file" accept=".csv,.CSV" style="display:none" onchange="carregarCSVCNES(this)">
-                  </label>
+                  </button>
                 </div>
               </div>
             </div>

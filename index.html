@@ -6766,14 +6766,15 @@ function renderReceitaMensal() {
 
 // ── INTEGRAÇÃO CNES / DATASUS ──────────────────────────────────────────────
 let _cnesMedicos = [];
+let _cnesCSVData = null; // Cache do CSV carregado
 
 async function buscarCNES() {
-  const uf     = document.getElementById('cnesUF').value.toUpperCase();
-  const spec   = document.getElementById('cnesSpec').value;
-  const nome   = document.getElementById('cnesNome').value.trim();
+  const uf   = document.getElementById('cnesUF').value.toUpperCase().trim();
+  const spec = document.getElementById('cnesSpec').value.trim();
+  const nome = document.getElementById('cnesNome').value.trim().toUpperCase();
 
   if (!uf && !spec && !nome) {
-    _showToast('Informe ao menos um filtro: UF, especialidade ou nome.', 'warning');
+    showToast('Informe ao menos um filtro: UF, especialidade ou nome.', 'warning');
     return;
   }
 
@@ -6783,112 +6784,123 @@ async function buscarCNES() {
   document.getElementById('btnBuscarCNES').disabled = true;
   document.getElementById('btnBuscarCNES').textContent = '⚙ Buscando...';
 
-  try {
-    // ElastiCNES — API pública do DATASUS (dados abertos, sem autenticação)
-    // Endpoint: profissionais por CBO + UF
-    // CBO de médicos relevantes para cursos ISA
-    const cbos = {
-      'CARDIOLOGIA': '225125',
-      'MEDICINA INTENSIVA': '225265',
-      'MEDICINA DE URGENCIA': '225280',
-      'PEDIATRIA': '225133',
-      'CLINICA MEDICA': '225105',
-      'RADIOLOGIA E DIAGNOSTICO POR IMAGEM': '225350',
-      'CARDIOLOGIA PEDIATRICA': '225125',
-      'ANESTESIOLOGIA': '225103',
-      'MEDICINA INTERNA': '225105',
-    };
-
-    const cbo = cbos[spec] || '225';
-
-    // Usar API pública do CNES via DATASUS OpenData
-    let url = 'https://elasticsearch.saude.gov.br/profissional-sus/_search';
-    
-    // Construir query Elasticsearch
-    const must = [];
-    if (uf)   must.push({ match: { co_uf: uf } });
-    if (nome) must.push({ match: { no_profissional: nome.toUpperCase() } });
-    if (spec) must.push({ match: { ds_especialidade: spec } });
-    else      must.push({ prefix: { co_cbo: '225' } }); // todos os médicos
-
-    const body = {
-      size: 50,
-      query: { bool: { must } },
-      _source: ['no_profissional','ds_especialidade','no_municipio','co_uf','no_estabelecimento','co_cbo','ds_vinculo']
-    };
-
-    // Tentar ElastiCNES primeiro, fallback para scraping do portal
-    let medicos = [];
-    
-    try {
-      const r = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      if (r.ok) {
-        const data = await r.json();
-        medicos = (data.hits?.hits || []).map(h => ({
-          nome:           h._source.no_profissional || '',
-          especialidade:  h._source.ds_especialidade || spec || 'Médico',
-          cidade:         h._source.no_municipio || '',
-          estado:         h._source.co_uf || uf,
-          estabelecimento:h._source.no_estabelecimento || '',
-          vinculo:        h._source.ds_vinculo || '',
-          selecionado:    true
-        }));
-      }
-    } catch(e) { /* fallback abaixo */ }
-
-    // Fallback: API CNES via DataSUS FTP/CSV simulada com dados do portal público
-    if (medicos.length === 0) {
-      // Usar endpoint público do portal CNES
-      const portalUrl = `https://cnes.datasus.gov.br/services/profissionais?uf=${uf}&especialidade=${encodeURIComponent(spec)}&nome=${encodeURIComponent(nome)}&_=${Date.now()}`;
-      try {
-        const r2 = await fetch(portalUrl);
-        if (r2.ok) {
-          const data2 = await r2.json();
-          medicos = (data2.content || data2.data || []).slice(0, 50).map(m => ({
-            nome:           m.noProfissional || m.nome || '',
-            especialidade:  m.dsEspecialidade || m.especialidade || spec || 'Médico',
-            cidade:         m.noMunicipio || m.municipio || '',
-            estado:         m.coUf || m.uf || uf,
-            estabelecimento:m.noEstabelecimento || '',
-            vinculo:        m.dsVinculo || '',
-            selecionado:    true
-          }));
-        }
-      } catch(e2) { /* sem dados */ }
-    }
-
-    document.getElementById('cnesLoading').style.display = 'none';
-    document.getElementById('btnBuscarCNES').disabled = false;
-    document.getElementById('btnBuscarCNES').textContent = '🔍 Buscar Médicos no CNES';
-
-    if (medicos.length === 0) {
-      document.getElementById('cnesErro').style.display = 'block';
-      document.getElementById('cnesErro').innerHTML = `
-        <b>⚠️ API do CNES temporariamente indisponível</b><br><br>
-        O DATASUS pode estar fora do ar. Enquanto isso, você pode:<br>
-        <ol style="margin:8px 0 0 16px;line-height:2">
-          <li>Acessar <a href="https://cnes.datasus.gov.br/pages/profissionais/extracao.jsp" target="_blank" style="color:var(--gold-light)">cnes.datasus.gov.br</a> e baixar o CSV de profissionais</li>
-          <li>Abrir o CSV baixado no Excel</li>
-          <li>Filtrar pela coluna "ESPECIALIDADE" (Cardiologia, etc.)</li>
-          <li>Salvar e importar aqui no campo "Importar via Planilha" abaixo</li>
-        </ol>`;
-      return;
-    }
-
-    _cnesMedicos = medicos;
-    renderCNESResultados();
-
-  } catch(err) {
-    document.getElementById('cnesLoading').style.display = 'none';
-    document.getElementById('btnBuscarCNES').disabled = false;
-    document.getElementById('btnBuscarCNES').textContent = '🔍 Buscar Médicos no CNES';
-    document.getElementById('cnesErro').style.display = 'block';
-    document.getElementById('cnesErro').textContent = 'Erro ao conectar com o CNES: ' + err.message;
+  // Se já temos CSV em cache, filtrar direto
+  if (_cnesCSVData) {
+    _filtrarCSVCNES(uf, spec, nome);
+    return;
   }
+
+  // Mostrar instruções para baixar o CSV do CNES
+  document.getElementById('cnesLoading').style.display = 'none';
+  document.getElementById('btnBuscarCNES').disabled = false;
+  document.getElementById('btnBuscarCNES').textContent = '🔍 Buscar Médicos no CNES';
+  document.getElementById('cnesErro').style.display = 'block';
+  document.getElementById('cnesErro').innerHTML = `
+    <div style="margin-bottom:12px"><b style="color:var(--gold-light)">📋 Como buscar médicos no CNES em 3 passos:</b></div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <div style="width:24px;height:24px;background:var(--gold);color:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">1</div>
+        <div style="font-size:12px;line-height:1.6">Acesse <a href="https://cnes.datasus.gov.br/pages/profissionais/extracao.jsp" target="_blank" style="color:var(--gold-light);font-weight:600">cnes.datasus.gov.br → Consultas → Extração de Profissionais</a>, selecione o estado desejado e clique em baixar</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <div style="width:24px;height:24px;background:var(--gold);color:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">2</div>
+        <div style="font-size:12px;line-height:1.6">Abra o arquivo no Excel, filtre a coluna <b>CBO</b> por <b>225</b> (todos os médicos) ou a coluna <b>ESPECIALIDADE</b> pelo nome desejado, e salve como <b>.CSV</b></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <div style="width:24px;height:24px;background:var(--gold);color:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">3</div>
+        <div style="font-size:12px;line-height:1.6">Clique no botão abaixo para carregar o CSV e o app filtra, pontua e importa automaticamente</div>
+      </div>
+    </div>
+    <div style="margin-top:14px">
+      <label style="display:inline-block;padding:9px 18px;background:linear-gradient(135deg,#b8862e,#c9a227);color:#000;font-weight:700;font-size:13px;border-radius:8px;cursor:pointer;letter-spacing:.04em">
+        📂 Carregar CSV do CNES
+        <input type="file" accept=".csv,.CSV" style="display:none" onchange="carregarCSVCNES(this)">
+      </label>
+      <span style="font-size:11px;color:var(--text3);margin-left:10px">Arquivo .CSV baixado do DATASUS</span>
+    </div>`;
+}
+
+function carregarCSVCNES(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const uf   = document.getElementById('cnesUF').value.toUpperCase().trim();
+  const spec = document.getElementById('cnesSpec').value.trim();
+  const nome = document.getElementById('cnesNome').value.trim().toUpperCase();
+
+  document.getElementById('cnesErro').innerHTML = '<div style="text-align:center;padding:16px;color:var(--text3)">⚙ Processando CSV...</div>';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const text = e.target.result;
+      // Detectar separador (vírgula ou ponto-e-vírgula)
+      const sep = text.indexOf(';') > text.indexOf(',') ? ';' : ',';
+      const lines = text.split(/?
+/).filter(l => l.trim());
+      if (lines.length < 2) { showToast('CSV vazio ou inválido.', 'error'); return; }
+
+      const headers = lines[0].split(sep).map(h => h.trim().toUpperCase().replace(/['"]/g,''));
+
+      // Mapear colunas do CNES (nomes podem variar)
+      const idx = {
+        nome:  headers.findIndex(h => h.includes('NOME') || h.includes('PROFISSIONAL')),
+        spec:  headers.findIndex(h => h.includes('ESPECIALIDADE') || h.includes('CBO_DESC')),
+        mun:   headers.findIndex(h => h.includes('MUNICIPIO') || h.includes('CIDADE')),
+        uf:    headers.findIndex(h => h === 'UF' || h === 'CO_UF' || h.includes('ESTADO')),
+        estab: headers.findIndex(h => h.includes('ESTABELECIMENTO') || h.includes('UNIDADE')),
+        cbo:   headers.findIndex(h => h === 'CBO' || h.includes('CO_CBO')),
+      };
+
+      _cnesCSVData = lines.slice(1).map(line => {
+        const cols = line.split(sep).map(c => c.trim().replace(/['"]/g,''));
+        return {
+          nome:           idx.nome  >= 0 ? cols[idx.nome]  || '' : '',
+          especialidade:  idx.spec  >= 0 ? cols[idx.spec]  || '' : '',
+          cidade:         idx.mun   >= 0 ? cols[idx.mun]   || '' : '',
+          estado:         idx.uf    >= 0 ? cols[idx.uf]    || '' : '',
+          estabelecimento:idx.estab >= 0 ? cols[idx.estab] || '' : '',
+          cbo:            idx.cbo   >= 0 ? cols[idx.cbo]   || '' : '',
+        };
+      }).filter(m => m.nome && m.nome.length > 2);
+
+      showToast(`✅ CSV carregado: ${_cnesCSVData.length.toLocaleString('pt-BR')} profissionais`, 'success');
+      _filtrarCSVCNES(uf, spec, nome);
+
+    } catch(err) {
+      document.getElementById('cnesErro').style.display = 'block';
+      document.getElementById('cnesErro').textContent = 'Erro ao processar CSV: ' + err.message;
+    }
+  };
+  reader.readAsText(file, 'ISO-8859-1');
+}
+
+function _filtrarCSVCNES(uf, spec, nome) {
+  document.getElementById('cnesErro').style.display = 'none';
+  document.getElementById('cnesLoading').style.display = 'none';
+  document.getElementById('btnBuscarCNES').disabled = false;
+  document.getElementById('btnBuscarCNES').textContent = '🔍 Buscar Médicos no CNES';
+
+  let resultado = _cnesCSVData.filter(m => {
+    // Filtrar apenas médicos (CBO começa com 225)
+    if (m.cbo && !m.cbo.startsWith('225') && !m.cbo.startsWith('2251') && !m.cbo.startsWith('2252')) {
+      // Se CBO não é médico e tem especialidade vazia, pular
+      if (!m.especialidade) return false;
+    }
+    if (uf   && m.estado   && !m.estado.toUpperCase().includes(uf))   return false;
+    if (spec && m.especialidade && !m.especialidade.toUpperCase().includes(spec.split(' ')[0])) return false;
+    if (nome && !m.nome.toUpperCase().includes(nome)) return false;
+    return true;
+  }).slice(0, 80).map(m => ({ ...m, selecionado: true }));
+
+  if (resultado.length === 0) {
+    document.getElementById('cnesErro').style.display = 'block';
+    document.getElementById('cnesErro').textContent = 'Nenhum resultado encontrado para os filtros aplicados. Tente ajustar os filtros.';
+    return;
+  }
+
+  _cnesMedicos = resultado;
+  renderCNESResultados();
 }
 
 function renderCNESResultados() {

@@ -3033,62 +3033,81 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
             <span style="font-size:11px;padding:3px 8px;background:rgba(39,174,96,.15);color:#27ae60;border-radius:20px;font-weight:600">100% Gratuito</span>
           </div>
           <div class="card-body">
-            <p style="font-size:13px;color:var(--text3);margin-bottom:16px">
-              Busque e importe médicos diretamente da base oficial do <strong style="color:var(--gold-light)">Cadastro Nacional de Estabelecimentos de Saúde (CNES)</strong> do Ministério da Saúde — sem custo algum.
-            </p>
 
-            <!-- Filtros -->
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
-              <div>
-                <label style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:6px">Estado (UF)</label>
-                <select id="cnesUF" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text)">
-                  <option value="">Todos</option>
-                  <option value="AC">AC</option><option value="AL">AL</option><option value="AM">AM</option>
-                  <option value="AP">AP</option><option value="BA">BA</option><option value="CE">CE</option>
-                  <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
-                  <option value="MA">MA</option><option value="MG">MG</option><option value="MS">MS</option>
-                  <option value="MT">MT</option><option value="PA">PA</option><option value="PB">PB</option>
-                  <option value="PE">PE</option><option value="PI">PI</option><option value="PR">PR</option>
-                  <option value="RJ">RJ</option><option value="RN">RN</option><option value="RO">RO</option>
-                  <option value="RR">RR</option><option value="RS">RS</option><option value="SC">SC</option>
-                  <option value="SE">SE</option><option value="SP">SP</option><option value="TO">TO</option>
-                </select>
-              </div>
-              <div>
-                <label style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:6px">Especialidade</label>
-                <select id="cnesSpec" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text)">
-                  <option value="">Todas</option>
-                  <option value="CARDIOLOGIA">Cardiologia</option>
-                  <option value="MEDICINA INTENSIVA">Medicina Intensiva</option>
-                  <option value="MEDICINA DE URGENCIA">Medicina de Urgência</option>
-                  <option value="PEDIATRIA">Pediatria</option>
-                  <option value="CLINICA MEDICA">Clínica Médica</option>
-                  <option value="RADIOLOGIA E DIAGNOSTICO POR IMAGEM">Radiologia e Diagnóstico</option>
-                  <option value="CARDIOLOGIA PEDIATRICA">Cardiologia Pediátrica</option>
-                  <option value="ANESTESIOLOGIA">Anestesiologia</option>
-                  <option value="MEDICINA INTERNA">Medicina Interna</option>
-                </select>
-              </div>
-              <div>
-                <label style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:6px">Nome do médico</label>
-                <input type="text" id="cnesNome" placeholder="Ex: João Silva" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text);box-sizing:border-box">
-              </div>
-            </div>
+            <!-- Passo a passo visual -->
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
 
-            <button onclick="buscarCNES()" id="btnBuscarCNES"
-              style="width:100%;padding:11px;background:linear-gradient(135deg,#b8862e,#c9a227,#e8c060);color:#000;font-weight:700;font-size:14px;border:none;border-radius:8px;cursor:pointer;margin-bottom:16px;letter-spacing:.04em">
-              🔍 Buscar Médicos no CNES
-            </button>
-
-            <!-- Info boxes -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-              <div style="padding:12px;background:var(--bg3);border-radius:8px;border-left:3px solid var(--gold)">
-                <div style="font-size:11px;font-weight:700;color:var(--gold-light);margin-bottom:4px">📊 O QUE É IMPORTADO</div>
-                <div style="font-size:11px;color:var(--text3);line-height:1.7">Nome completo • Especialidade • Município e Estado • Estabelecimento de saúde • Tipo de vínculo</div>
+              <!-- Passo 1 -->
+              <div style="display:flex;gap:12px;align-items:flex-start;padding:12px;background:var(--bg3);border-radius:10px">
+                <div style="width:28px;height:28px;background:var(--gold);color:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">1</div>
+                <div style="flex:1">
+                  <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Baixe o arquivo do CNES</div>
+                  <div style="font-size:12px;color:var(--text3);line-height:1.6;margin-bottom:8px">Acesse o site oficial do DATASUS, selecione o estado e baixe o arquivo de profissionais.</div>
+                  <a href="https://cnes.datasus.gov.br/pages/profissionais/extracao.jsp" target="_blank"
+                    style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:rgba(201,162,39,.12);color:var(--gold-light);border:1px solid rgba(201,162,39,.25);border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">
+                    🌐 Abrir site do CNES/DATASUS
+                  </a>
+                </div>
               </div>
-              <div style="padding:12px;background:var(--bg3);border-radius:8px;border-left:3px solid #27ae60">
-                <div style="font-size:11px;font-weight:700;color:#27ae60;margin-bottom:4px">✅ COMO FUNCIONA</div>
-                <div style="font-size:11px;color:var(--text3);line-height:1.7">Consulta a API pública do DATASUS/ElastiCNES em tempo real — dados atualizados diariamente pelo Ministério da Saúde</div>
+
+              <!-- Passo 2 -->
+              <div style="display:flex;gap:12px;align-items:flex-start;padding:12px;background:var(--bg3);border-radius:10px">
+                <div style="width:28px;height:28px;background:var(--gold);color:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">2</div>
+                <div>
+                  <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Filtre no Excel (opcional)</div>
+                  <div style="font-size:12px;color:var(--text3);line-height:1.6">Abra o arquivo no Excel, filtre a coluna <b style="color:var(--text2)">CBO</b> por <b style="color:var(--gold-light)">225</b> (médicos) ou a coluna <b style="color:var(--text2)">ESPECIALIDADE</b> pelo nome desejado. Salve como <b style="color:var(--gold-light)">.CSV</b>.</div>
+                </div>
+              </div>
+
+              <!-- Passo 3 -->
+              <div style="display:flex;gap:12px;align-items:flex-start;padding:12px;background:var(--bg3);border-radius:10px;border:1px solid rgba(201,162,39,.2)">
+                <div style="width:28px;height:28px;background:var(--gold);color:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">3</div>
+                <div style="flex:1">
+                  <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Carregue aqui e aplique os filtros</div>
+                  <div style="font-size:12px;color:var(--text3);line-height:1.6;margin-bottom:10px">O app lê o CSV, filtra por especialidade/UF/nome, sugere o curso certo e calcula o score automaticamente.</div>
+
+                  <!-- Filtros inline -->
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+                    <div>
+                      <label style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px">UF</label>
+                      <select id="cnesUF" style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text)">
+                        <option value="">Todos</option>
+                        <option value="AC">AC</option><option value="AL">AL</option><option value="AM">AM</option>
+                        <option value="AP">AP</option><option value="BA">BA</option><option value="CE">CE</option>
+                        <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
+                        <option value="MA">MA</option><option value="MG">MG</option><option value="MS">MS</option>
+                        <option value="MT">MT</option><option value="PA">PA</option><option value="PB">PB</option>
+                        <option value="PE">PE</option><option value="PI">PI</option><option value="PR">PR</option>
+                        <option value="RJ">RJ</option><option value="RN">RN</option><option value="RO">RO</option>
+                        <option value="RR">RR</option><option value="RS">RS</option><option value="SC">SC</option>
+                        <option value="SE">SE</option><option value="SP">SP</option><option value="TO">TO</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px">Especialidade</label>
+                      <select id="cnesSpec" style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text)">
+                        <option value="">Todas</option>
+                        <option value="CARDIOLOGIA">Cardiologia</option>
+                        <option value="MEDICINA INTENSIVA">Med. Intensiva</option>
+                        <option value="MEDICINA DE URGENCIA">Med. Urgência</option>
+                        <option value="PEDIATRIA">Pediatria</option>
+                        <option value="CLINICA MEDICA">Clínica Médica</option>
+                        <option value="RADIOLOGIA">Radiologia</option>
+                        <option value="ANESTESIOLOGIA">Anestesiologia</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:4px">Nome</label>
+                      <input type="text" id="cnesNome" placeholder="Ex: João" style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text);box-sizing:border-box">
+                    </div>
+                  </div>
+
+                  <!-- Botão carregar CSV -->
+                  <label style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:linear-gradient(135deg,#b8862e,#c9a227,#e8c060);color:#000;font-weight:700;font-size:13px;border-radius:8px;cursor:pointer;letter-spacing:.04em" id="btnBuscarCNES">
+                    📂 Carregar CSV do CNES e Buscar
+                    <input type="file" accept=".csv,.CSV" style="display:none" onchange="carregarCSVCNES(this)">
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -3096,7 +3115,7 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
             <div id="cnesResultados" style="display:none">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                 <div style="font-size:13px;font-weight:600;color:var(--text)" id="cnesResultCount"></div>
-                <button onclick="importarSelecionadosCNES()" id="btnImportarCNES"
+                <button onclick="importarSelecionadosCNES()"
                   style="padding:8px 16px;background:rgba(39,174,96,.15);color:#27ae60;border:1px solid rgba(39,174,96,.3);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">
                   ⬇ Importar Selecionados
                 </button>
@@ -3104,11 +3123,10 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
               <div id="cnesLista" style="display:flex;flex-direction:column;gap:8px;max-height:350px;overflow-y:auto"></div>
             </div>
 
-            <div id="cnesLoading" style="display:none;text-align:center;padding:30px;color:var(--text3)">
-              <div style="font-size:28px;margin-bottom:10px;animation:spin 1s linear infinite">⚙</div>
-              <div style="font-size:13px">Consultando base CNES...</div>
+            <div id="cnesLoading" style="display:none;text-align:center;padding:20px;color:var(--text3)">
+              <div style="font-size:13px">⚙ Processando CSV...</div>
             </div>
-            <div id="cnesErro" style="display:none;padding:12px;background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.2);border-radius:8px;font-size:13px;color:#e74c3c"></div>
+            <div id="cnesErro" style="display:none;padding:12px;background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.2);border-radius:8px;font-size:13px;color:#e74c3c;margin-top:10px"></div>
           </div>
         </div>
 
@@ -6836,7 +6854,8 @@ function carregarCSVCNES(input) {
       const text = e.target.result;
       // Detectar separador (vírgula ou ponto-e-vírgula)
       const sep = text.indexOf(';') > text.indexOf(',') ? ';' : ',';
-      const lines = text.split(/?
+      const lines = text.split(/
+?
 /).filter(l => l.trim());
       if (lines.length < 2) { showToast('CSV vazio ou inválido.', 'error'); return; }
 

@@ -3042,11 +3042,24 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
                 <div style="width:28px;height:28px;background:var(--gold);color:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">1</div>
                 <div style="flex:1">
                   <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Baixe o arquivo do CNES</div>
-                  <div style="font-size:12px;color:var(--text3);line-height:1.6;margin-bottom:8px">Acesse o site antigo do CNES (o novo está com bug). Selecione o estado, filtre por especialidade e clique em Download.</div>
-                  <a href="http://cnes2.datasus.gov.br/Cad_Procura_Profissional.asp" target="_blank"
-                    style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:rgba(201,162,39,.12);color:var(--gold-light);border:1px solid rgba(201,162,39,.25);border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">
-                    🌐 Abrir site do CNES/DATASUS
-                  </a>
+                  <div style="font-size:12px;color:var(--text3);line-height:1.6;margin-bottom:10px">O site do CNES está instável. Use uma das opções abaixo para baixar os dados de profissionais:</div>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <a href="https://cnes.datasus.gov.br/pages/profissionais/extracao.jsp" target="_blank"
+                      style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:rgba(201,162,39,.12);color:var(--gold-light);border:1px solid rgba(201,162,39,.25);border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">
+                      🌐 Opção 1 — Portal CNES (Extração de Profissionais)
+                    </a>
+                    <a href="https://data.brasil.io/mirror/ftp.datasus.gov.br/cnes/_meta/list.html" target="_blank"
+                      style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:rgba(201,162,39,.12);color:var(--gold-light);border:1px solid rgba(201,162,39,.25);border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">
+                      📦 Opção 2 — Brasil.IO (espelho do FTP DATASUS — mais estável)
+                    </a>
+                    <a href="https://datasus.saude.gov.br/transferencia-de-arquivos/" target="_blank"
+                      style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:rgba(201,162,39,.12);color:var(--gold-light);border:1px solid rgba(201,162,39,.25);border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">
+                      🗂 Opção 3 — DATASUS Transferência de Arquivos (pasta CNES/PF)
+                    </a>
+                  </div>
+                  <div style="margin-top:8px;padding:8px 10px;background:rgba(201,162,39,.06);border-radius:7px;font-size:11px;color:var(--text3);line-height:1.6">
+                    💡 <b style="color:var(--text2)">Dica:</b> Na Opção 2, acesse a pasta <b>PF</b> (Profissionais), escolha o estado (ex: SP) e baixe o arquivo mais recente. Ele vem em formato .dbc — abra no Excel ou converta para CSV antes de carregar aqui.
+                  </div>
                 </div>
               </div>
 

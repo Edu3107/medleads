@@ -3044,21 +3044,27 @@ body.light-mode .sidebar-footer { border-top-color: rgba(0,0,0,0.06); }
                   <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Baixe o arquivo do CNES</div>
                   <div style="font-size:12px;color:var(--text3);line-height:1.6;margin-bottom:10px">O site do CNES está instável. Use uma das opções abaixo para baixar os dados de profissionais:</div>
                   <div style="display:flex;flex-direction:column;gap:8px">
+                    <a href="http://cnes2.datasus.gov.br/mod_ind_profissional_com_cbo.asp" target="_blank"
+                      style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:rgba(201,162,39,.12);color:var(--gold-light);border:1px solid rgba(201,162,39,.25);border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">
+                      🌐 Opção 1 — CNES: Consulta de Profissionais por CBO (recomendado)
+                    </a>
                     <a href="https://cnes.datasus.gov.br/pages/profissionais/extracao.jsp" target="_blank"
                       style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:rgba(201,162,39,.12);color:var(--gold-light);border:1px solid rgba(201,162,39,.25);border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">
-                      🌐 Opção 1 — Portal CNES (Extração de Profissionais)
-                    </a>
-                    <a href="https://data.brasil.io/mirror/ftp.datasus.gov.br/cnes/_meta/list.html" target="_blank"
-                      style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:rgba(201,162,39,.12);color:var(--gold-light);border:1px solid rgba(201,162,39,.25);border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">
-                      📦 Opção 2 — Brasil.IO (espelho do FTP DATASUS — mais estável)
-                    </a>
-                    <a href="https://datasus.saude.gov.br/transferencia-de-arquivos/" target="_blank"
-                      style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:rgba(201,162,39,.12);color:var(--gold-light);border:1px solid rgba(201,162,39,.25);border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">
-                      🗂 Opção 3 — DATASUS Transferência de Arquivos (pasta CNES/PF)
+                      📋 Opção 2 — CNES: Extração de Profissionais por Estado
                     </a>
                   </div>
                   <div style="margin-top:8px;padding:8px 10px;background:rgba(201,162,39,.06);border-radius:7px;font-size:11px;color:var(--text3);line-height:1.6">
-                    💡 <b style="color:var(--text2)">Dica:</b> Na Opção 2, acesse a pasta <b>PF</b> (Profissionais), escolha o estado (ex: SP) e baixe o arquivo mais recente. Ele vem em formato .dbc — abra no Excel ou converta para CSV antes de carregar aqui.
+                    💡 <b style="color:var(--text2)">Como usar a Opção 1:</b> No campo CBO, digite o código da especialidade desejada, selecione o estado e clique em <b>Pesquisar</b>. Na lista de resultados clique em <b>Exportar CSV</b> e carregue o arquivo aqui no Passo 3.<br><br>
+                    <b style="color:var(--text2)">Códigos CBO por especialidade:</b><br>
+                    <span style="display:inline-flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+                      <span style="padding:3px 8px;background:rgba(201,162,39,.12);border-radius:5px;font-size:11px;color:var(--gold-light);font-weight:600">225125 — Cardiologista</span>
+                      <span style="padding:3px 8px;background:rgba(201,162,39,.12);border-radius:5px;font-size:11px;color:var(--gold-light);font-weight:600">225265 — Intensivista</span>
+                      <span style="padding:3px 8px;background:rgba(201,162,39,.12);border-radius:5px;font-size:11px;color:var(--gold-light);font-weight:600">225133 — Pediatra</span>
+                      <span style="padding:3px 8px;background:rgba(201,162,39,.12);border-radius:5px;font-size:11px;color:var(--gold-light);font-weight:600">225105 — Clínico Geral</span>
+                      <span style="padding:3px 8px;background:rgba(201,162,39,.12);border-radius:5px;font-size:11px;color:var(--gold-light);font-weight:600">225280 — Emergencista</span>
+                      <span style="padding:3px 8px;background:rgba(201,162,39,.12);border-radius:5px;font-size:11px;color:var(--gold-light);font-weight:600">225350 — Radiologista</span>
+                      <span style="padding:3px 8px;background:rgba(201,162,39,.12);border-radius:5px;font-size:11px;color:var(--gold-light);font-weight:600">225103 — Anestesiologista</span>
+                    </span>
                   </div>
                 </div>
               </div>
